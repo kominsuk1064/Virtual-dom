@@ -1,0 +1,72 @@
+당신은 팀원 D입니다. UI 이벤트와 history 통합을 담당하세요.
+
+[담당 파일]
+- main.js, index.html, style.css, README.md 만 수정 가능
+- src/vdom.js, src/diff.js, src/patch.js 는 수정하지 마세요
+
+[담당 범위]
+1) 상태 변수
+- let history = []
+- let historyIndex = -1
+- let currentVDOM = null
+
+2) 초기화(init)
+- 실제 영역 DOM -> domToVdom
+- history = [cloneVdom(initialVDOM)], historyIndex = 0
+- currentVDOM = cloneVdom(initialVDOM)
+- 테스트 영역을 initialVDOM으로 렌더
+
+3) Patch 버튼 핸들러
+- 테스트 영역 DOM -> newVDOM
+- patches = diff(currentVDOM, newVDOM)
+- applyPatches(실제 영역 루트, patches)  // 부분 업데이트
+- currentVDOM = cloneVdom(newVDOM)
+- history를 historyIndex + 1 까지 자른 뒤 push
+- historyIndex를 마지막으로 이동
+
+4) Undo / Redo 버튼
+- Undo: historyIndex > 0 이면 -- 후 syncBothAreasFromVdom(history[historyIndex])
+- Redo: historyIndex < history.length - 1 이면 ++ 후 syncBothAreasFromVdom(history[historyIndex])
+- Undo / Redo 이후에는 반드시 currentVDOM = cloneVdom(history[historyIndex]) 수행
+
+5) syncBothAreasFromVdom(vdom)
+- 실제 영역 / 테스트 영역 모두 비우고 vdomToDom으로 전체 렌더(허용)
+- 버튼 활성 / 비활성 상태도 함께 갱신
+
+6) 버튼 활성 / 비활성 업데이트
+- undo / redo 가능 여부 UI 반영
+
+7) 테스트 영역 편집 방식
+- 권장 방식: 테스트 영역 루트에 contenteditable을 적용하여 사용자가 직접 DOM 구조와 텍스트를 수정할 수 있게 구성
+- README에 textarea 기반 HTML 문자열 편집 대신 contenteditable을 선택한 이유를 짧게 설명
+
+8) 검증 / 문서화
+- README에 아래 항목을 반드시 포함
+  - 프로젝트 소개
+  - 실제 DOM이 느린 이유(reflow / repaint)
+  - Virtual DOM 구조와 필요한 이유
+  - Diff 알고리즘의 5가지 핵심 케이스
+  - Patch가 실제 DOM에 반영되는 방식
+  - Undo / Redo와 state history 구조
+  - 브라우저 API(Document, Window, 필요시 MutationObserver 언급)
+  - 테스트 케이스 / 검증 결과
+- 최소 테스트 케이스 예시:
+  - 텍스트 변경
+  - 속성 변경
+  - 노드 추가
+  - 노드 삭제
+  - 태그 교체
+  - Undo / Redo
+  - 공백 텍스트 노드 무시
+
+[중요]
+- 팀원 A / B / C 함수 호출 규약을 그대로 사용
+- 함수명 / 데이터 포맷 임의 변경 금지
+- Patch 버튼에서는 반드시 부분 업데이트가 보이게 유지
+- README에는 현재 구현 범위와 제한사항(key/move 미지원 등)도 명시
+- MutationObserver는 필수 구현은 아니며, 적용하지 않으면 README에 "Patch 버튼 기반 수동 반영"이라고 분명히 적을 것
+
+[산출물]
+- 이벤트 흐름 설명
+- undo / redo에서 redo 절단 규칙 설명
+- 수동 테스트 시나리오 3개 제시

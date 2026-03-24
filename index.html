@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini Virtual DOM Playground</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <p class="eyebrow">Vanilla JS Team Project</p>
+        <h1>Mini Virtual DOM Playground</h1>
+        <p class="subtitle">
+          DOM -> Virtual DOM -> Diff -> Patch -> History 흐름을 직접 구현하고
+          시각적으로 검증하는 실험 페이지
+        </p>
+      </header>
+
+      <section class="toolbar">
+        <div class="toolbar__buttons">
+          <button id="patch-button" class="button button--primary" type="button">
+            Patch
+          </button>
+          <button id="undo-button" class="button" type="button" disabled>
+            Undo
+          </button>
+          <button id="redo-button" class="button" type="button" disabled>
+            Redo
+          </button>
+          <button id="reset-button" class="button" type="button">
+            Reset
+          </button>
+        </div>
+
+        <div class="status-card">
+          <span class="status-card__label">State</span>
+          <strong id="state-indicator">Ready</strong>
+        </div>
+      </section>
+
+      <main class="workspace">
+        <section class="panel">
+          <div class="panel__header">
+            <h2>실제 영역</h2>
+            <p>Patch 적용 대상</p>
+          </div>
+          <div id="real-root" class="surface"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__header">
+            <h2>테스트 영역</h2>
+            <p>contenteditable 기반 편집 대상</p>
+          </div>
+          <div
+            id="test-root"
+            class="surface surface--editable"
+            contenteditable="true"
+            spellcheck="false"
+          ></div>
+        </section>
+      </main>
+
+      <section class="inspector-grid">
+        <section class="panel panel--compact">
+          <div class="panel__header">
+            <h2>Patch Log</h2>
+            <p>현재는 초기 뼈대만 구성되어 있습니다.</p>
+          </div>
+          <pre id="patch-log" class="code-box">[info] Waiting for diff / patch implementation.</pre>
+        </section>
+
+        <section class="panel panel--compact">
+          <div class="panel__header">
+            <h2>Virtual DOM Preview</h2>
+            <p>초기 샘플 구조를 표시합니다.</p>
+          </div>
+          <pre id="vdom-preview" class="code-box">{}</pre>
+        </section>
+      </section>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
+

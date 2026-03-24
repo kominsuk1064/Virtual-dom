@@ -1,0 +1,36 @@
+당신은 팀원 A입니다. 아래 범위만 구현하세요.
+
+[담당 파일]
+- src/vdom.js 만 수정 가능
+- 다른 파일은 수정하지 마세요
+
+[담당 범위]
+1) domToVdom(node)
+- Element / Text 노드 처리
+- props는 attributes 순회로 객체화
+- children은 childNodes 기준 순회
+- 공백-only 텍스트 노드 제거
+- Comment 노드는 무시
+
+2) vdomToDom(vnode)
+- "#text" 처리
+- element 처리 + props setAttribute
+- children 재귀 append
+
+3) cloneVdom(vdom)
+- JSON 기반 깊은 복사 구현
+
+4) 테스트 헬퍼(선택)
+- 동일 입력 DOM -> domToVdom -> vdomToDom 후 구조가 유지되는지 확인하는 간단한 로그 함수 작성 가능
+
+[중요]
+- 공통 인터페이스 규격(함수명 / VDOM 포맷 / patch 포맷) 절대 변경 금지
+- input / textarea / select의 value / checked는 우선 attribute 기준으로만 처리하고, 주석으로 한계 명시
+- diff / apply / history / UI 로직은 건드리지 말 것
+- export/전역 노출 방식은 기존 프로젝트 구조를 그대로 따를 것
+- 테스트 영역은 contenteditable 기반 편집 DOM을 사용할 가능성이 높으므로, 브라우저가 자동 보정한 DOM 구조도 무리 없이 읽을 수 있게 구현할 것
+
+[산출물]
+- 수정 파일 목록
+- 구현 함수별 동작 요약
+- 엣지 케이스(공백 텍스트 등) 처리 방식 명시

@@ -1,0 +1,78 @@
+[공통 규격 - 반드시 준수]
+프로젝트 목표: 바닐라 JS로 Virtual DOM 핵심 흐름(VDOM 생성 -> diff -> patch -> DOM 반영 + undo/redo) 구현.
+
+0) 협업 규칙
+- 이 프로젝트는 4명이 병렬 작업 중입니다.
+- 각 팀원은 자신의 담당 파일만 수정합니다. 다른 파일 수정 금지.
+- 함수명, VDOM 스키마, patch 포맷은 임의 변경 금지.
+- export/전역 노출 방식은 팀에서 미리 정한 현재 파일 구조를 그대로 따릅니다.
+
+1) 파일 소유권
+- 팀원 A: src/vdom.js
+- 팀원 B: src/diff.js
+- 팀원 C: src/patch.js
+- 팀원 D: main.js, index.html, style.css, README.md
+
+2) VDOM 스키마
+- 텍스트 노드: { type: "#text", text: string }
+- 엘리먼트 노드: { type: string, props: Record<string,string>, children: VNode[] }
+
+3) 공백 텍스트 정책
+- text node에서 trim() === "" 이면 무시합니다.
+- 생성(domToVdom)과 비교(diff) 모두 동일 정책을 사용합니다.
+
+4) Patch 포맷
+- ADD: { type:"ADD", path:number[], node:VNode, index:number }
+- REMOVE: { type:"REMOVE", path:number[] }
+- REPLACE: { type:"REPLACE", path:number[], node:VNode }
+- PROPS_UPDATE: { type:"PROPS_UPDATE", path:number[], setProps:Record<string,string>, removeProps:string[] }
+- TEXT_UPDATE: { type:"TEXT_UPDATE", path:number[], text:string }
+
+5) Patch path 규칙
+- ADD의 path는 "부모 노드 경로"입니다.
+- ADD의 index는 부모 아래에 삽입할 child index입니다.
+- REMOVE / REPLACE / PROPS_UPDATE / TEXT_UPDATE의 path는 "대상 노드 경로"입니다.
+- 예시:
+  - path []: 루트 노드
+  - path [1, 0]: 루트의 두 번째 자식의 첫 번째 자식
+
+6) 루트 처리 규칙
+- 실제 patch 적용 대상은 "실제 영역 컨테이너의 첫 번째 자식 루트 노드"로 가정합니다.
+- path []에서 REPLACE/REMOVE가 발생할 수 있으므로, 루트 교체/삭제 케이스를 고려합니다.
+- undo/redo에서는 전체 재렌더를 허용합니다.
+
+7) 공통 함수명(이름 변경 금지)
+- domToVdom(node)
+- vdomToDom(vnode)
+- diff(oldVDOM, newVDOM, path = [])
+- applyPatches(rootDom, patches)
+- getNodeByPath(root, path)
+- cloneVdom(vdom)
+- syncBothAreasFromVdom(vdom)
+
+8) 범위 제한
+- child index 기반 diff만 구현합니다. key/move 최적화는 제외합니다.
+- Patch 버튼에서는 "부분 업데이트"를 수행합니다.
+- undo/redo는 전체 재렌더 허용입니다.
+- 테스트 영역 편집 방식은 팀에서 하나로 고정합니다.
+- 권장 방식: contenteditable 기반의 편집 가능한 DOM 영역을 사용합니다.
+- README에는 사용자가 "HTML 구조를 편집 가능한 테스트 영역에서 수정"하도록 설계한 이유를 짧게 설명합니다.
+
+9) 상태 동기화 규칙
+- Patch 후 currentVDOM = cloneVdom(newVDOM)
+- Undo/Redo 후에도 currentVDOM = cloneVdom(history[historyIndex])를 반드시 수행합니다.
+- 새 상태 push 시 history는 historyIndex + 1 까지만 남기고 뒤쪽 redo 이력은 제거합니다.
+
+10) 코드 스타일
+- 순수 JS(ES6), 외부 라이브러리 금지
+- 함수마다 짧은 JSDoc 작성
+- 한계 사항은 주석으로 명시 가능
+
+11) README / 발표 반영 포인트
+- README에는 아래 내용을 반드시 포함합니다.
+- 실제 DOM이 느린 이유: reflow / repaint 관점
+- Virtual DOM이 필요한 이유
+- Diff 알고리즘의 5가지 핵심 케이스: 추가 / 삭제 / 교체 / 텍스트 변경 / 속성 변경
+- 브라우저 API 관련 설명: Document / Window / 필요시 MutationObserver 언급
+- 이번 구현은 Patch 버튼 기반 수동 반영이며, MutationObserver는 선택적 탐색 항목으로 정리 가능
+- 테스트 케이스와 검증 결과를 표 또는 체크리스트 형태로 포함합니다.
