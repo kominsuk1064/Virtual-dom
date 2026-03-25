@@ -110,7 +110,7 @@ function renderPlaceholder(message) {
   mount.innerHTML = `
     <div class="site-placeholder">
       <div>
-        <strong>후보 사이트를 만들 수 없어요</strong>
+        <strong>가설 보드를 만들 수 없어요</strong>
         <p>${escapeHtml(message)}</p>
       </div>
     </div>

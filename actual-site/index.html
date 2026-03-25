@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>실제 사이트</title>
+    <title>현재 수사 보드</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body data-site-kind="actual">
@@ -11,38 +11,38 @@
       <header class="site-topbar">
         <div class="site-brand">
           <span class="site-brand__dot"></span>
-          <strong>Actual Market</strong>
+          <strong>Case Board</strong>
         </div>
-        <nav class="site-nav" aria-label="실제 사이트 탐색">
-          <a href="/">홈</a>
-          <a href="/">추천</a>
-          <a href="/">주문</a>
+        <nav class="site-nav" aria-label="현재 수사 보드 탐색">
+          <a href="/">사건실</a>
+          <a href="/">용의자</a>
+          <a href="/">증거함</a>
         </nav>
       </header>
 
       <main class="site-main">
         <section class="site-hero">
-          <p class="site-kicker">실제 웹사이트</p>
-          <h1>사용자가 보고 있는 현재 페이지</h1>
+          <p class="site-kicker">수사 보드 시작 화면</p>
+          <h1>동일한 사건 보드에서 수사를 시작합니다</h1>
           <p>
-            이 사이트는 메인 포털 안에 삽입된 독립 페이지입니다. 변화 반영이 끝나면 이 페이지 안의 내용만
-            업데이트됩니다.
+            두 개의 독립 수사 페이지는 같은 사건 보드 상태에서 출발합니다. 이후 오른쪽에서 가설을 바꾸고 변화 반영을
+            누르면 왼쪽 보드만 실제로 갱신됩니다.
           </p>
         </section>
 
         <section class="site-content">
           <div id="site-render-root" class="site-render-root" aria-live="polite">
             <div class="site-placeholder">
-              <strong>실제 사이트 준비 중</strong>
-              <p>독립 사이트가 현재 상태를 불러오고 있습니다.</p>
+              <strong>수사 보드 준비 중</strong>
+              <p>독립 수사 페이지가 동일한 시작 사건을 불러오고 있습니다.</p>
             </div>
           </div>
         </section>
       </main>
 
       <footer class="site-footer">
-        <span>actual-site/index.html</span>
-        <span>독립 임베드 사이트</span>
+        <span>탐정 수사 보드</span>
+        <span>동일한 시작 상태</span>
       </footer>
     </div>
     <script type="module" src="./app.js"></script>
