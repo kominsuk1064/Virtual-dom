@@ -1,6 +1,7 @@
 /**
  * 벤치마크 시나리오 정의
  * 각 시나리오는 초기 VDOM과 변경 후 VDOM을 생성하는 함수를 제공한다.
+ * params 배열로 사용자 조절 가능한 파라미터를 정의한다.
  */
 
 function makeLi(text, key) {
@@ -20,6 +21,16 @@ function makeDiv(className, text) {
   };
 }
 
+/**
+ * 트리 노드 수 추정 (S4 노드 폭발 방지용)
+ */
+export function estimateNodeCount(depth, breadth) {
+  if (breadth <= 1) return depth + 1;
+  return Math.floor((Math.pow(breadth, depth + 1) - 1) / (breadth - 1));
+}
+
+export const NODE_LIMIT = 100_000;
+
 // S1: 대량 리스트 부분 수정
 function bulkUpdateInitial(count = 1000) {
   const children = [];
@@ -31,7 +42,7 @@ function bulkUpdateInitial(count = 1000) {
 
 function bulkUpdateModified(count = 1000, changeRatio = 0.1) {
   const children = [];
-  const changeEvery = Math.floor(1 / changeRatio);
+  const changeEvery = Math.max(1, Math.floor(1 / changeRatio));
   for (let i = 0; i < count; i++) {
     const text = i % changeEvery === 0 ? `Updated-Item ${i} ✓` : `Item ${i}`;
     children.push(makeLi(text, i));
@@ -118,32 +129,49 @@ export const scenarios = [
     id: "bulk-update",
     name: "대량 수정",
     icon: "📝",
-    description: "3000개 리스트 중 5%만 텍스트 변경",
-    generateInitial: () => bulkUpdateInitial(3000),
-    generateModified: () => bulkUpdateModified(3000, 0.05),
+    description: "리스트 중 일부만 텍스트 변경",
+    params: [
+      { key: "count", label: "항목 수", default: 3000, min: 100, max: 50000, step: 100 },
+      { key: "changeRatio", label: "변경 비율(%)", default: 5, min: 1, max: 100, step: 1 },
+    ],
+    generateInitial: ({ count }) => bulkUpdateInitial(count),
+    generateModified: ({ count, changeRatio }) => bulkUpdateModified(count, changeRatio / 100),
   },
   {
     id: "middle-insert",
     name: "중간 삽입",
     icon: "➕",
-    description: "1000개 리스트 끝에 100개 항목 삽입",
-    generateInitial: () => middleInsertInitial(1000),
-    generateModified: () => middleInsertModified(1000, 100),
+    description: "리스트 중간에 항목 삽입",
+    params: [
+      { key: "count", label: "전체 항목 수", default: 1000, min: 100, max: 50000, step: 100 },
+      { key: "insertCount", label: "삽입 항목 수", default: 100, min: 10, max: 5000, step: 10 },
+    ],
+    generateInitial: ({ count }) => middleInsertInitial(count),
+    generateModified: ({ count, insertCount }) =>
+      middleInsertModified(count, Math.min(insertCount, count)),
   },
   {
     id: "props-toggle",
     name: "속성 토글",
     icon: "🔄",
-    description: "1000개 요소의 class/data 속성 일괄 변경",
-    generateInitial: () => propsToggleInitial(1000),
-    generateModified: () => propsToggleModified(1000),
+    description: "모든 요소의 class/data 속성 일괄 변경",
+    params: [
+      { key: "count", label: "요소 수", default: 1000, min: 100, max: 50000, step: 100 },
+    ],
+    generateInitial: ({ count }) => propsToggleInitial(count),
+    generateModified: ({ count }) => propsToggleModified(count),
   },
   {
     id: "deep-tree",
     name: "트리 리프",
     icon: "🌳",
-    description: "6단계 깊이 트리의 최하위 리프 텍스트만 변경",
-    generateInitial: () => deepTreeInitial(6, 4),
-    generateModified: () => deepTreeModified(6, 4),
+    description: "깊은 트리의 최하위 리프 텍스트만 변경",
+    params: [
+      { key: "depth", label: "깊이", default: 6, min: 2, max: 10, step: 1 },
+      { key: "breadth", label: "분기 수", default: 4, min: 2, max: 6, step: 1 },
+    ],
+    estimateNodes: ({ depth, breadth }) => estimateNodeCount(depth, breadth),
+    generateInitial: ({ depth, breadth }) => deepTreeInitial(depth, breadth),
+    generateModified: ({ depth, breadth }) => deepTreeModified(depth, breadth),
   },
 ];

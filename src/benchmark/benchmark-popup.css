@@ -109,6 +109,53 @@
   color: #64748b;
 }
 
+/* Parameter inputs */
+.bench-params {
+  display: none;
+  gap: 16px;
+  padding: 10px 20px;
+  background: #12142a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.bench-params.has-params {
+  display: flex;
+}
+.bench-param {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+.bench-param__input {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.bench-param__input:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+.bench-params__warning {
+  margin-left: auto;
+  font-size: 11px;
+  color: #64748b;
+  transition: color 0.2s;
+}
+.bench-params__warning.is-over-limit {
+  color: #f87171;
+  font-weight: 600;
+}
+
 /* Split panels */
 .bench-body {
   flex: 1;

@@ -1,5 +1,7 @@
-import { diff } from "./src/diff.js";
-import { cloneVdom, domToVdom, vdomToDom } from "./src/vdom.js";
+import { diff as diffKeyed } from "./src/optimized/diff-keyed.js";
+const diff = diffKeyed;
+import { cloneVdom, domToVdom } from "./src/vdom.js";
+import { vdomToDomMapped } from "./src/optimized/vdom-mapped.js";
 
 const realFrame = document.querySelector("#real-frame");
 const testFrame = document.querySelector("#test-frame");
@@ -61,6 +63,7 @@ let history = [];
 let historyIndex = -1;
 let currentVDOM = null;
 let initialVDOM = null;
+let nodeMap = new WeakMap();
 let lastPatchCount = 0;
 let pendingPatches = [];
 let currentValidation = {
@@ -462,7 +465,7 @@ function createEvidencePhoto(title, badge, theme) {
  * Push a VDOM snapshot back into the structured editor fields.
  */
 function syncEditorFieldsFromVdom(vdom) {
-  const root = vdomToDom(cloneVdom(vdom));
+  const root = vdomToDomMapped(cloneVdom(vdom), nodeMap);
 
   if (!root) {
     return;
@@ -855,7 +858,7 @@ function renderChangeSummary(mode, options = {}) {
  */
 function buildEditableRootFromCurrentState() {
   if (currentVDOM) {
-    return vdomToDom(cloneVdom(currentVDOM));
+    return vdomToDomMapped(cloneVdom(currentVDOM), nodeMap);
   }
 
   return initialCardTemplate?.content?.firstElementChild?.cloneNode(true) ?? null;
@@ -1158,6 +1161,7 @@ function handleUndo() {
   lastPatchCount = 0;
   syncBothAreasFromVdom(history[historyIndex]);
   currentVDOM = cloneVdom(history[historyIndex]);
+  nodeMap = new WeakMap();
 
   renderPatchLog("이전 상태 복원 완료", [], [
     `[이력 위치] ${historyIndex + 1} / ${history.length}`,
@@ -1178,6 +1182,7 @@ function handleRedo() {
   lastPatchCount = 0;
   syncBothAreasFromVdom(history[historyIndex]);
   currentVDOM = cloneVdom(history[historyIndex]);
+  nodeMap = new WeakMap();
 
   renderPatchLog("다음 상태 복원 완료", [], [
     `[이력 위치] ${historyIndex + 1} / ${history.length}`,
@@ -1193,6 +1198,7 @@ function handleReset() {
   history = [cloneVdom(initialVDOM)];
   historyIndex = 0;
   currentVDOM = cloneVdom(initialVDOM);
+  nodeMap = new WeakMap();
   lastPatchCount = 0;
   pendingPatches = [];
 
@@ -1224,6 +1230,7 @@ function init() {
   history = [cloneVdom(initialVDOM)];
   historyIndex = 0;
   currentVDOM = cloneVdom(initialVDOM);
+  nodeMap = new WeakMap();
   lastPatchCount = 0;
   pendingPatches = [];
 

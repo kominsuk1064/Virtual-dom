@@ -43,9 +43,9 @@ src/optimized/ 모듈의 import 경로만 교체하는 방식으로 작업한다
 ## 현재 파일별 의존 관계
 
 ```
-main.js
-  ├─ import { diff } from "./src/diff.js"              ← line 696, 778
-  ├─ import { vdomToDom, cloneVdom } from "./src/vdom.js"  ← line 181, 548 (vdomToDom) / 13곳 (cloneVdom)
+main.js (1319줄)
+  ├─ import { diff } from "./src/diff.js"              ← line 1011, 1094
+  ├─ import { vdomToDom, cloneVdom } from "./src/vdom.js"  ← line 465, 858 (vdomToDom) / 14곳 (cloneVdom)
   └─ applyPatches는 직접 호출하지 않음 (BroadcastChannel로 iframe에 위임)
 
 actual-site/app.js
@@ -134,16 +134,16 @@ import { domToVdom, cloneVdom } from "./src/vdom.js";  // 이 둘은 그대로
 
 ### 2-2. nodeMap 전역 변수 추가
 
-기존 상태 변수 근처 (line 25-30 부근)에 추가:
+기존 상태 변수 근처 (line 60-66 부근)에 추가:
 ```js
 let nodeMap = new WeakMap();
 ```
 
 ### 2-3. vdomToDom 호출부 교체 (2곳)
 
-- line 181: `const root = vdomToDom(cloneVdom(vdom));`
+- line 465: `const root = vdomToDom(cloneVdom(vdom));`
   → `const root = vdomToDomMapped(cloneVdom(vdom), nodeMap);`
-- line 548: `return vdomToDom(cloneVdom(currentVDOM));`
+- line 858: `return vdomToDom(cloneVdom(currentVDOM));`
   → `return vdomToDomMapped(cloneVdom(currentVDOM), nodeMap);`
 
 주의: 여기서 cloneVdom 후 vdomToDomMapped를 쓰면 새 객체로 nodeMap이 재구축된다.
@@ -153,25 +153,35 @@ nodeMap을 새로 채운다.
 ### 2-4. diff 호출부 (2곳) — 자동 적용
 
 import에서 `diffKeyed as diff`로 alias했으므로 호출부 수정 불필요:
-- line 696: `pendingPatches = diff(currentVDOM, validation.vdom);` ← 그대로
-- line 778: `const patches = diff(currentVDOM, nextVdom);` ← 그대로
+- line 1011: `pendingPatches = diff(currentVDOM, validation.vdom);` ← 그대로
+- line 1094: `const patches = diff(currentVDOM, nextVdom);` ← 그대로
 
 ### 2-5. cloneVdom 후 nodeMap 재구축 전략
 
 cloneVdom은 JSON.parse(JSON.stringify())를 사용하므로 WeakMap 키가 끊긴다.
+main.js에 cloneVdom은 14곳 사용 중 (import 제외).
 
 규칙: cloneVdom으로 새 vdom을 currentVDOM에 저장한 후,
 다음 렌더 시 vdomToDomMapped가 호출되면 nodeMap이 자동 재구축된다.
 
-따라서 cloneVdom 13곳 자체는 수정 불필요.
+따라서 cloneVdom 14곳 자체는 수정 불필요.
 단, nodeMap을 초기화하는 시점을 명확히 해야 한다:
 
 ```js
-// undo/redo 시 (line 844, 864)
+// undo 시 (line 1160)
 currentVDOM = cloneVdom(history[historyIndex]);
 nodeMap = new WeakMap();  // ← 추가: 다음 렌더에서 재구축됨
 
-// reset 시 (line 877-879, 908-910)
+// redo 시 (line 1180)
+currentVDOM = cloneVdom(history[historyIndex]);
+nodeMap = new WeakMap();  // ← 추가
+
+// reset 1 (line 1193-1195)
+history = [cloneVdom(initialVDOM)];
+currentVDOM = cloneVdom(initialVDOM);
+nodeMap = new WeakMap();  // ← 추가
+
+// reset 2 (line 1224-1226)
 history = [cloneVdom(initialVDOM)];
 currentVDOM = cloneVdom(initialVDOM);
 nodeMap = new WeakMap();  // ← 추가
@@ -472,7 +482,7 @@ function selectScenario(id) {
 |------|-------|----------|
 | src/optimized/patch-mapped.js | 1 | import 교체 + ADD/REPLACE에서 vdomToDomMapped 사용 + MOVE case 추가 |
 | src/optimized/diff-keyed.js | 1 | getKey 폴백 + MOVE 패치 생성 (LIS) |
-| main.js | 2 | import 교체 + nodeMap 변수 + vdomToDom→Mapped 2곳 + undo/redo/reset 시 nodeMap 초기화 4곳 |
+| main.js | 2 | import 교체 + nodeMap 변수 + vdomToDom→Mapped 2곳 + undo/redo/reset 시 nodeMap 초기화 4곳 (line 1160, 1180, 1195, 1226) |
 | actual-site/app.js | 3 | import 교체 + nodeMap 변수 + 초기렌더 Mapped + applyPatches 교체 또는 유지 |
 | preview-site/app.js | 3 | import 교체 + nodeMap 변수 + 초기렌더 Mapped |
 | src/benchmark/scenarios.js | 4 | params 배열 추가, generate 함수 시그니처 변경 (params 객체 수신) |
