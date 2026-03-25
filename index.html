@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>탐정 수사 보드 가상 DOM 데모</title>
+    <title>바뀐 단서만 움직이는 보드의 비밀 | 탐정 수사 보드 가상 DOM 데모</title>
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./src/benchmark/benchmark-popup.css" />
   </head>
@@ -12,11 +12,30 @@
       <!-- MOD: 초심자 발표 기준으로 용어보다 이야기를 먼저 보여주는 도입부 -->
       <header class="hero panel panel--hero">
         <p class="eyebrow">탐정 수사 보드 가상 DOM 데모</p>
-        <h1>수사 보드는 왜<br />바뀐 단서만 옮길까?</h1>
+        <h1 class="hero__title">
+          <span class="hero__title-main" data-text="바뀐 단서만 움직이는">바뀐 단서만 움직이는</span>
+          <span class="hero__title-emphasis" data-text="보드의">보드의</span>
+          <span class="hero__title-evidence">
+            <span class="hero__title-evidence-text" data-text="비밀">비밀</span>
+            <span class="hero__title-evidence-nail" aria-hidden="true"></span>
+          </span>
+        </h1>
         <div class="hero__actions">
           <button id="benchmark-button" class="button button--subtle" type="button">⚡ 벤치마크</button>
         </div>
       </header>
+
+      <section class="snapshot-bar">
+        <label class="history-jump" for="history-jump-select">
+          <span class="history-jump__label">스냅샷 선택</span>
+          <select id="history-jump-select" class="history-jump__select" disabled>
+            <option value="0">스냅샷 1</option>
+          </select>
+        </label>
+        <button id="history-jump-button" class="button button--subtle" type="button" disabled>
+          선택한 스냅샷으로 이동
+        </button>
+      </section>
 
       <!-- MOD: 버튼과 상태 카드를 초심자 친화적인 문장으로 다시 정리 -->
       <section class="toolbar">
@@ -26,18 +45,6 @@
             <button id="undo-button" class="button" type="button" disabled>이전 보드</button>
             <button id="redo-button" class="button" type="button" disabled>다음 보드</button>
             <button id="reset-button" class="button button--subtle" type="button">초기 사건으로</button>
-          </div>
-
-          <div class="toolbar__history-actions">
-            <label class="history-jump" for="history-jump-select">
-              <span class="history-jump__label">스냅샷 선택</span>
-              <select id="history-jump-select" class="history-jump__select" disabled>
-                <option value="0">스냅샷 1</option>
-              </select>
-            </label>
-            <button id="history-jump-button" class="button button--subtle" type="button" disabled>
-              선택한 스냅샷으로 이동
-            </button>
           </div>
 
           <!-- MOD: 발표용 빠른 시나리오 버튼을 상단 조작 버튼 영역으로 이동 -->
