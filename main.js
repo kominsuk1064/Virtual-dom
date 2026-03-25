@@ -75,6 +75,8 @@ let currentValidation = {
   message: "",
   vdom: null
 };
+let actionCooldownUntil = 0;
+let actionCooldownTimer = null;
 
 const scenarioLabels = {
   text: "사건명 바꾸기",
@@ -86,6 +88,20 @@ const scenarioLabels = {
 };
 const EMPTY_CLUE_KEY = "empty-clue";
 const EMPTY_CLUE_LABEL = "아직 확보된 단서 없음";
+const EDITOR_CHAR_LIMITS = {
+  title: 48,
+  badge: 24,
+  description: 120,
+  suspectName: 20,
+  suspectNote: 60,
+  clueLine: 40,
+  cluesTotal: 1200
+};
+const ACTION_BUTTON_COOLDOWN_MS = 1000;
+const PHOTO_RESET_COOLDOWN_MS = 1000;
+const MAX_PHOTO_FILE_SIZE = 5 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_PHOTO_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
 
 const frameReadyState = {
   actual: false,
@@ -311,11 +327,60 @@ function updateStatus(statusLabel) {
  * Enable or disable action buttons based on state.
  */
 function updateButtonState() {
-  patchButton.disabled = !currentValidation.valid || pendingPatches.length === 0;
-  undoButton.disabled = historyIndex <= 0;
-  redoButton.disabled = historyIndex >= history.length - 1;
-  resetButton.disabled = history.length === 1 && historyIndex === 0;
+  const isCoolingDown = Date.now() < actionCooldownUntil;
+
+  patchButton.disabled = isCoolingDown || !currentValidation.valid || pendingPatches.length === 0;
+  undoButton.disabled = isCoolingDown || historyIndex <= 0;
+  redoButton.disabled = isCoolingDown || historyIndex >= history.length - 1;
+  resetButton.disabled = isCoolingDown || (history.length === 1 && historyIndex === 0);
   updateHistoryJumpActionState();
+}
+
+/**
+ * Start a shared cooldown for the four primary snapshot action buttons.
+ */
+function startPrimaryActionCooldown() {
+  actionCooldownUntil = Date.now() + ACTION_BUTTON_COOLDOWN_MS;
+
+  if (actionCooldownTimer) {
+    clearTimeout(actionCooldownTimer);
+  }
+
+  actionCooldownTimer = setTimeout(() => {
+    actionCooldownUntil = 0;
+    actionCooldownTimer = null;
+    updateButtonState();
+  }, ACTION_BUTTON_COOLDOWN_MS);
+
+  updateButtonState();
+}
+
+/**
+ * Wrap a button handler so repeated clicks are blocked during cooldown.
+ */
+function withPrimaryActionCooldown(handler) {
+  return () => {
+    if (Date.now() < actionCooldownUntil) {
+      return;
+    }
+
+    startPrimaryActionCooldown();
+    handler();
+  };
+}
+
+/**
+ * Disable one photo reset button briefly to prevent repeated rapid clicks.
+ */
+function triggerPhotoResetCooldown(button) {
+  if (!button) {
+    return;
+  }
+
+  button.disabled = true;
+  window.setTimeout(() => {
+    button.disabled = false;
+  }, PHOTO_RESET_COOLDOWN_MS);
 }
 
 /**
@@ -399,6 +464,45 @@ function getEditorValues() {
       }
     ]
   };
+}
+
+/**
+ * Return a validation message when one editor field exceeds its configured limit.
+ */
+function validateEditorCharLimits(values) {
+  if (values.title.length > EDITOR_CHAR_LIMITS.title) {
+    return `사건명은 ${EDITOR_CHAR_LIMITS.title}자 이하로 입력해 주세요.`;
+  }
+
+  if (values.badge.length > EDITOR_CHAR_LIMITS.badge) {
+    return `사건 상태는 ${EDITOR_CHAR_LIMITS.badge}자 이하로 입력해 주세요.`;
+  }
+
+  if (values.description.length > EDITOR_CHAR_LIMITS.description) {
+    return `수사 메모는 ${EDITOR_CHAR_LIMITS.description}자 이하로 입력해 주세요.`;
+  }
+
+  const flattenedItemsLength = values.items.join("\n").length;
+  if (flattenedItemsLength > EDITOR_CHAR_LIMITS.cluesTotal) {
+    return `단서 카드는 전체 ${EDITOR_CHAR_LIMITS.cluesTotal}자 이하로 입력해 주세요.`;
+  }
+
+  const longClue = values.items.find((item) => item.length > EDITOR_CHAR_LIMITS.clueLine);
+  if (longClue) {
+    return `단서 카드는 한 줄당 ${EDITOR_CHAR_LIMITS.clueLine}자 이하로 입력해 주세요.`;
+  }
+
+  for (const suspect of values.suspects) {
+    if (suspect.name.length > EDITOR_CHAR_LIMITS.suspectName) {
+      return `용의자 ${suspect.slot.toUpperCase()} 이름은 ${EDITOR_CHAR_LIMITS.suspectName}자 이하로 입력해 주세요.`;
+    }
+
+    if (suspect.note.length > EDITOR_CHAR_LIMITS.suspectNote) {
+      return `용의자 ${suspect.slot.toUpperCase()} 메모는 ${EDITOR_CHAR_LIMITS.suspectNote}자 이하로 입력해 주세요.`;
+    }
+  }
+
+  return "";
 }
 
 /**
@@ -494,6 +598,41 @@ function describePhotoSource(field) {
   }
 
   return "기본 수배 사진 사용 중";
+}
+
+/**
+ * Validate one uploaded suspect photo before previewing it.
+ */
+function validatePhotoFile(file) {
+  if (!file) {
+    return {
+      valid: false,
+      message: "사진 파일을 다시 선택해 주세요."
+    };
+  }
+
+  const extension = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() ?? "" : "";
+  const hasAllowedMime = ALLOWED_PHOTO_TYPES.has(file.type);
+  const hasAllowedExtension = ALLOWED_PHOTO_EXTENSIONS.has(extension);
+
+  if (!(hasAllowedMime || hasAllowedExtension)) {
+    return {
+      valid: false,
+      message: "JPG, PNG, WEBP 파일만 업로드할 수 있습니다."
+    };
+  }
+
+  if (file.size > MAX_PHOTO_FILE_SIZE) {
+    return {
+      valid: false,
+      message: "사진 용량은 5MB 이하여야 합니다."
+    };
+  }
+
+  return {
+    valid: true,
+    message: "업로드 가능한 사진입니다."
+  };
 }
 
 /**
@@ -874,6 +1013,16 @@ function buildVdomFromEditor(values) {
  * Validate the structured editor values and return a candidate VDOM.
  */
 function validateEditorValues(values) {
+  const charLimitMessage = validateEditorCharLimits(values);
+
+  if (charLimitMessage) {
+    return {
+      valid: false,
+      message: charLimitMessage,
+      vdom: null
+    };
+  }
+
   if (!values.title) {
     return {
       valid: false,
@@ -1593,6 +1742,14 @@ async function bootstrap() {
         return;
       }
 
+      const validation = validatePhotoFile(file);
+
+      if (!validation.valid) {
+        control.file.value = "";
+        control.state.textContent = validation.message;
+        return;
+      }
+
       const reader = new FileReader();
       reader.addEventListener("load", () => {
         writePhotoToken(control.field, typeof reader.result === "string" ? reader.result : "");
@@ -1605,12 +1762,17 @@ async function bootstrap() {
 
   photoResetButtons.forEach((button) => {
     button.addEventListener("click", () => {
+      if (button.disabled) {
+        return;
+      }
+
       const control = suspectPhotoControls[button.dataset.photoReset];
 
       if (!control) {
         return;
       }
 
+      triggerPhotoResetCooldown(button);
       writePhotoToken(control.field, "");
       refreshPreviewFromEditor("기본 수배 사진으로 가설 보드를 다시 계산했습니다.");
     });
@@ -1627,10 +1789,10 @@ async function bootstrap() {
     updateHistoryJumpActionState();
   });
   historyJumpButton?.addEventListener("click", handleHistoryJump);
-  patchButton.addEventListener("click", handlePatch);
-  undoButton.addEventListener("click", handleUndo);
-  redoButton.addEventListener("click", handleRedo);
-  resetButton.addEventListener("click", handleReset);
+  patchButton.addEventListener("click", withPrimaryActionCooldown(handlePatch));
+  undoButton.addEventListener("click", withPrimaryActionCooldown(handleUndo));
+  redoButton.addEventListener("click", withPrimaryActionCooldown(handleRedo));
+  resetButton.addEventListener("click", withPrimaryActionCooldown(handleReset));
 
   init();
 }

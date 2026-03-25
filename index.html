@@ -128,12 +128,24 @@
           <div class="editor-form">
             <label class="field-group field-group--card" for="field-title">
               <span class="field-group__label">사건명</span>
-              <input id="field-title" class="field-input" type="text" placeholder="예: 붉은 열쇠 실종 사건" />
+              <input
+                id="field-title"
+                class="field-input"
+                type="text"
+                maxlength="48"
+                placeholder="예: 붉은 열쇠 실종 사건"
+              />
             </label>
 
             <label class="field-group field-group--card" for="field-badge">
               <span class="field-group__label">사건 상태</span>
-              <input id="field-badge" class="field-input" type="text" placeholder="예: 유력 용의자 특정" />
+              <input
+                id="field-badge"
+                class="field-input"
+                type="text"
+                maxlength="24"
+                placeholder="예: 유력 용의자 특정"
+              />
             </label>
 
             <label class="field-group field-group--card" for="field-theme">
@@ -158,6 +170,7 @@
                 id="field-description"
                 class="field-input"
                 type="text"
+                maxlength="120"
                 placeholder="예: 북쪽 복도 CCTV가 오후 9시 14분에 마지막 신호를 남겼습니다."
               />
             </label>
@@ -170,7 +183,13 @@
 
               <label class="field-group" for="suspect-one-name">
                 <span class="field-group__label">이름</span>
-                <input id="suspect-one-name" class="field-input" type="text" placeholder="예: 윤서진" />
+                <input
+                  id="suspect-one-name"
+                  class="field-input"
+                  type="text"
+                  maxlength="20"
+                  placeholder="예: 윤서진"
+                />
               </label>
 
               <input id="suspect-one-photo" type="hidden" />
@@ -183,7 +202,12 @@
 
                 <div class="photo-lab__actions">
                   <label class="photo-upload" for="suspect-one-file">파일에서 사진 선택</label>
-                  <input id="suspect-one-file" class="visually-hidden" type="file" accept="image/*" />
+                  <input
+                    id="suspect-one-file"
+                    class="visually-hidden"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  />
                   <button class="photo-reset" type="button" data-photo-reset="a">기본 생성으로 되돌리기</button>
                 </div>
               </div>
@@ -194,6 +218,7 @@
                   id="suspect-one-note"
                   class="field-input"
                   type="text"
+                  maxlength="60"
                   placeholder="예: 현장 마지막 출입 기록 보유"
                 />
               </label>
@@ -207,7 +232,13 @@
 
               <label class="field-group" for="suspect-two-name">
                 <span class="field-group__label">이름</span>
-                <input id="suspect-two-name" class="field-input" type="text" placeholder="예: 마준호" />
+                <input
+                  id="suspect-two-name"
+                  class="field-input"
+                  type="text"
+                  maxlength="20"
+                  placeholder="예: 마준호"
+                />
               </label>
 
               <input id="suspect-two-photo" type="hidden" />
@@ -220,7 +251,12 @@
 
                 <div class="photo-lab__actions">
                   <label class="photo-upload" for="suspect-two-file">파일에서 사진 선택</label>
-                  <input id="suspect-two-file" class="visually-hidden" type="file" accept="image/*" />
+                  <input
+                    id="suspect-two-file"
+                    class="visually-hidden"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  />
                   <button class="photo-reset" type="button" data-photo-reset="b">기본 생성으로 되돌리기</button>
                 </div>
               </div>
@@ -231,6 +267,7 @@
                   id="suspect-two-note"
                   class="field-input"
                   type="text"
+                  maxlength="60"
                   placeholder="예: 정지된 회중시계와 동일 브랜드 소지"
                 />
               </label>
@@ -242,6 +279,7 @@
                 id="field-items"
                 class="field-input field-input--textarea"
                 spellcheck="false"
+                maxlength="1200"
                 placeholder="한 줄에 하나씩 입력하세요.&#10;예: 검은 우산 소지"
               ></textarea>
             </label>
@@ -253,7 +291,8 @@
               초기 DOM을 로드하는 중입니다.
             </p>
             <p class="form-hint">
-              사건명, 단서 카드, 보드 태그를 바꾸면 오른쪽 가설 보드가 먼저 바뀌고, 변화 반영을 눌러야 왼쪽 현재 보드에 적용됩니다.
+              사건명 48자, 사건 상태 24자, 수사 메모 120자, 용의자 이름 20자, 용의자 메모 60자, 단서 카드는 한 줄당
+              40자까지 입력할 수 있습니다.
             </p>
           </div>
         </section>
