@@ -1,43 +1,55 @@
-# Mini Virtual DOM Playground
+<!-- MOD: 초심자 발표 흐름에 맞춰 문서 구조와 설명 순서를 재정리 -->
+# Beginner-first Virtual DOM Playground
 
-Vanilla JavaScript로 React의 핵심 아이디어인 Virtual DOM, Diff, Patch, Undo/Redo 흐름을 직접 구현하고 눈으로 검증하는 프로토타입입니다.
+Vanilla JavaScript로 Virtual DOM의 핵심 흐름을 보여주는 발표용 프로토타입입니다. 이 버전은 “개발자가 아닌 사람도 이해할 수 있는 설명 순서”를 목표로 구성되어 있습니다.
 
 ## 프로젝트 소개
 
-- 실제 영역의 DOM을 읽어 canonical Virtual DOM으로 변환합니다.
-- textarea에서 HTML 문자열을 수정하면 테스트 미리보기 영역이 새로운 VDOM으로 다시 렌더링됩니다.
-- `Patch` 버튼을 누르면 이전 VDOM과 새 VDOM을 비교해 patch 목록을 만들고, 변경된 부분만 실제 영역에 반영합니다.
-- 변경된 VDOM은 history에 저장되며 `Undo` / `Redo`로 특정 상태를 다시 불러올 수 있습니다.
+- 왼쪽은 현재 실제 DOM 화면입니다.
+- 오른쪽은 곧 바뀔 후보 화면입니다.
+- 사용자는 `textarea` 또는 프리셋 시나리오 버튼으로 다음 화면을 만듭니다.
+- 앱은 이전 VDOM과 다음 VDOM을 비교해 patch 목록을 만들고, 실제 DOM에는 바뀐 부분만 반영합니다.
+- 반영된 상태는 history에 저장되며 `Undo` / `Redo`로 다시 불러올 수 있습니다.
 
-## 기술 스택
+## 초심자 발표를 위한 화면 구성
 
-- HTML
-- CSS
-- JavaScript (Vanilla)
+이 프로젝트는 발표 중 청중의 시선을 한 번에 한 곳으로 모으기 위해 아래 순서로 설명하도록 설계되어 있습니다.
+
+1. “다음 화면을 먼저 만든다”
+2. “컴퓨터가 달라진 부분을 찾는다”
+3. “실제 화면에는 꼭 필요한 만큼만 반영한다”
+
+이를 위해 다음 장치를 추가했습니다.
+
+- 용어 번역 카드: Virtual DOM, Diff, Patch, History를 쉬운 말로 먼저 설명
+- 프리셋 시나리오 버튼: 제목 변경, 속성 변경, 노드 추가/삭제, 루트 교체를 버튼 한 번으로 시연
+- 사람 말 요약 패널: raw patch 대신 “무슨 일이 일어나는지”를 자연어로 먼저 설명
+- 변경 위치 하이라이트: 실제 화면과 후보 화면에서 바뀐 위치를 색으로 강조
+- 기술 로그 접기: JSON / patch 원본은 필요할 때만 펼쳐서 확인
 
 ## 실행 방법
 
-정적 파일 프로젝트이므로 [index.html](./index.html)을 브라우저에서 바로 열어도 되고, Live Server 같은 정적 서버를 사용해도 됩니다.
+정적 파일 프로젝트이므로 [index.html](./index.html)을 브라우저에서 열면 됩니다. 또는 간단한 정적 서버를 써도 됩니다.
 
 ## 동작 흐름
 
 1. 초기 로드 시 실제 영역 컨테이너 안의 첫 번째 루트 element를 읽습니다.
 2. `domToVdom`으로 Virtual DOM을 생성합니다.
 3. `vdomToDom`으로 실제 영역 DOM을 한 번 다시 렌더링해 canonical DOM으로 정규화합니다.
-4. 같은 VDOM을 테스트 미리보기 영역에도 렌더링합니다.
-5. textarea에서 HTML을 수정하면 파싱 -> VDOM 생성 -> 테스트 미리보기 전체 렌더가 수행됩니다.
+4. 같은 VDOM을 후보 미리보기 영역에도 렌더링합니다.
+5. `textarea`에서 HTML을 수정하거나 프리셋 시나리오를 누르면 파싱 -> VDOM 생성 -> 후보 미리보기 전체 렌더가 수행됩니다.
 6. `Patch` 버튼을 누르면 `diff(currentVDOM, newVDOM)` 결과를 `applyPatches`로 실제 영역에 부분 반영합니다.
 7. patch가 성공하면 새 VDOM을 history에 push합니다.
-8. `Undo` / `Redo`는 저장된 VDOM을 기준으로 실제 영역, 테스트 영역, textarea를 함께 다시 동기화합니다.
+8. `Undo` / `Redo`는 저장된 VDOM을 기준으로 실제 영역, 후보 영역, textarea를 함께 다시 동기화합니다.
 
 ## 실제 DOM이 느린 이유
 
-실제 DOM은 브라우저 렌더링 파이프라인과 직접 연결되어 있습니다. 따라서 노드를 추가하거나 삭제하고, 레이아웃에 영향을 주는 속성을 바꾸면 아래 비용이 생깁니다.
+실제 DOM 조작은 브라우저 렌더링 파이프라인과 직접 연결됩니다. 따라서 노드를 추가하거나 삭제하고, 레이아웃에 영향을 주는 속성을 바꾸면 아래 비용이 생깁니다.
 
 - Reflow: 레이아웃을 다시 계산하는 비용
 - Repaint: 다시 그리는 비용
 
-노드 수가 많거나 변경이 잦을수록 이 비용이 커질 수 있습니다. 그래서 전체 DOM을 매번 통째로 다시 그리기보다, 어떤 부분이 바뀌었는지 먼저 계산하고 최소한만 반영하는 전략이 중요합니다.
+노드 수가 많거나 변경이 잦을수록 이 비용이 커질 수 있습니다. 그래서 전체 DOM을 매번 다시 그리기보다, 바뀐 부분만 찾아 최소한만 반영하는 전략이 중요합니다.
 
 ## Virtual DOM 구조와 필요한 이유
 
@@ -55,7 +67,7 @@ Vanilla JavaScript로 React의 핵심 아이디어인 Virtual DOM, Diff, Patch, 
 
 Virtual DOM이 필요한 이유는 다음과 같습니다.
 
-- 실제 DOM을 직접 바로 비교하지 않고, 비교하기 쉬운 JS 객체 구조로 다룰 수 있습니다.
+- 실제 DOM 대신 비교하기 쉬운 JS 객체 구조로 상태를 다룰 수 있습니다.
 - 변경 전후 상태를 history로 저장하기 쉽습니다.
 - patch를 만들기 전에 어떤 노드가 달라졌는지 명확하게 분석할 수 있습니다.
 
@@ -134,7 +146,7 @@ Virtual DOM이 필요한 이유는 다음과 같습니다.
 - `remove`
 - `setAttribute`, `removeAttribute`
 
-`MutationObserver`는 중점 포인트로만 정리하고, 이번 프로토타입에서는 적용하지 않았습니다. 현재 구현은 `Patch` 버튼 기반 수동 반영 방식입니다.
+`MutationObserver`는 적용하지 않았고, 현재 구현은 `Patch` 버튼 기반 수동 반영 방식입니다.
 
 ## textarea 기반 입력 방식을 선택한 이유
 
@@ -154,7 +166,7 @@ Virtual DOM이 필요한 이유는 다음과 같습니다.
 
 | 케이스 | 입력 예시 | 기대 결과 | 결과 |
 | --- | --- | --- | --- |
-| 텍스트 변경 | `<h3>` 문구 수정 | `TEXT_UPDATE` 생성 | 확인 |
+| 텍스트 변경 | `h3` 문구 수정 | `TEXT_UPDATE` 생성 | 확인 |
 | 속성 변경 | `data-theme`, `class` 수정 | `PROPS_UPDATE` 생성 | 확인 |
 | 노드 추가 | `li` 하나 추가 | `ADD` 생성 | 확인 |
 | 노드 삭제 | 기존 `li` 하나 제거 | `REMOVE` 생성 | 확인 |
@@ -165,9 +177,9 @@ Virtual DOM이 필요한 이유는 다음과 같습니다.
 
 ## 수동 테스트 시나리오
 
-1. 제목 텍스트만 수정하고 `Patch`를 눌러 `TEXT_UPDATE` 로그를 확인합니다.
-2. 리스트 아이템을 하나 삭제하고 하나 추가한 뒤 `Patch`를 눌러 `REMOVE`, `ADD` 순서를 확인합니다.
-3. 루트 태그를 `section`에서 `article`로 바꾼 뒤 patch, undo, redo를 차례대로 눌러 루트 교체와 history 동기화를 확인합니다.
+1. “제목만 바꾸기” 프리셋을 눌러 `TEXT_UPDATE`와 하이라이트를 확인합니다.
+2. “속성만 바꾸기” 또는 “목록 1개 추가” 프리셋을 눌러 `PROPS_UPDATE`, `ADD`를 확인합니다.
+3. patch 후 `Undo`, `Redo`, `처음 샘플로`를 눌러 history 동기화와 reset 의미를 확인합니다.
 
 ## 제한사항
 
@@ -179,7 +191,7 @@ Virtual DOM이 필요한 이유는 다음과 같습니다.
 ## 폴더 구조
 
 ```text
-mini-virtual-dom-playground/
+Virtual-dom/
 ├─ index.html
 ├─ style.css
 ├─ main.js

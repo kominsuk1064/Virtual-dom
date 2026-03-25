@@ -3,132 +3,238 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mini Virtual DOM Playground</title>
+    <title>처음 보는 사람도 이해하는 가상 DOM 놀이터</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <div class="app-shell">
-      <header class="hero">
-        <p class="eyebrow">Vanilla JS Virtual DOM Prototype</p>
-        <h1>Mini Virtual DOM Playground</h1>
+      <!-- MOD: 초심자 발표 기준으로 용어보다 이야기를 먼저 보여주는 도입부 -->
+      <header class="hero panel panel--hero">
+        <p class="eyebrow">처음 보는 사람도 이해하는 가상 DOM 데모</p>
+        <h1>웹페이지는 왜<br />바뀐 부분만 고칠까?</h1>
         <p class="subtitle">
-          실제 DOM을 읽어 Virtual DOM으로 바꾸고, textarea에서 수정한 HTML을 diff / patch /
-          history 흐름으로 검증하는 발표용 프로토타입
+          왼쪽은 지금 실제 화면이고, 오른쪽은 곧 바뀔 후보 화면입니다. 컴퓨터는 두 화면을
+          비교해서 달라진 부분만 찾아낸 뒤, 실제 화면에 꼭 필요한 만큼만 반영합니다.
         </p>
+
+        <div class="term-grid">
+          <article class="term-card">
+            <span class="term-card__label">가상 DOM</span>
+            <strong>비교용 설계도</strong>
+            <p>실제 화면을 바로 고치기 전에, JS 객체로 만든 가벼운 복사본입니다.</p>
+          </article>
+          <article class="term-card">
+            <span class="term-card__label">비교</span>
+            <strong>달라진 부분 찾기</strong>
+            <p>이전 설계도와 다음 설계도를 비교해 무엇이 바뀌었는지 정리합니다.</p>
+          </article>
+          <article class="term-card">
+            <span class="term-card__label">반영</span>
+            <strong>실제 반영 목록</strong>
+            <p>텍스트 변경, 속성 변경, 노드 추가/삭제처럼 필요한 작업만 모아둡니다.</p>
+          </article>
+          <article class="term-card">
+            <span class="term-card__label">이력</span>
+            <strong>이전 화면 저장</strong>
+            <p>반영이 끝난 상태를 저장해 두고 이전 상태 / 다음 상태로 다시 꺼내 볼 수 있습니다.</p>
+          </article>
+        </div>
       </header>
 
+      <!-- MOD: 발표자가 그대로 따라 말할 수 있도록 3단계 이야기 구조를 추가 -->
+      <section class="story-strip">
+        <article class="story-card">
+          <span class="story-card__step">1단계</span>
+          <h2>다음 화면을 먼저 만든다</h2>
+          <p>입력창이나 프리셋 버튼으로 “어떤 화면이 되길 원하는지”를 먼저 정합니다.</p>
+        </article>
+        <article class="story-card">
+          <span class="story-card__step">2단계</span>
+          <h2>컴퓨터가 차이를 찾는다</h2>
+          <p>오른쪽 후보 화면을 보고, 제목이 바뀌었는지 목록이 추가됐는지 비교합니다.</p>
+        </article>
+        <article class="story-card">
+          <span class="story-card__step">3단계</span>
+          <h2>실제 화면에는 필요한 만큼만 반영한다</h2>
+          <p>반영 버튼을 누르면 바뀐 부분만 왼쪽 실제 화면에 적용되고 이력에도 저장됩니다.</p>
+        </article>
+      </section>
+
+      <!-- MOD: 버튼과 상태 카드를 초심자 친화적인 문장으로 다시 정리 -->
       <section class="toolbar">
         <div class="toolbar__buttons">
-          <button id="patch-button" class="button button--primary" type="button">Patch</button>
-          <button id="undo-button" class="button" type="button" disabled>Undo</button>
-          <button id="redo-button" class="button" type="button" disabled>Redo</button>
-          <button id="reset-button" class="button button--subtle" type="button">Reset</button>
+          <button id="patch-button" class="button button--primary" type="button">변화 반영</button>
+          <button id="undo-button" class="button" type="button" disabled>이전 상태</button>
+          <button id="redo-button" class="button" type="button" disabled>다음 상태</button>
+          <button id="reset-button" class="button button--subtle" type="button">처음 샘플로</button>
         </div>
 
         <div class="metric-grid">
           <article class="metric-card">
-            <span class="metric-card__label">State</span>
-            <strong id="state-indicator">Ready</strong>
+            <span class="metric-card__label">지금 단계</span>
+            <strong id="state-indicator">준비 중</strong>
           </article>
           <article class="metric-card">
-            <span class="metric-card__label">History</span>
+            <span class="metric-card__label">저장된 화면</span>
             <strong id="history-indicator">0 / 0</strong>
           </article>
           <article class="metric-card">
-            <span class="metric-card__label">Last Patch</span>
+            <span class="metric-card__label">바뀐 작업 수</span>
             <strong id="patch-count">0</strong>
           </article>
         </div>
       </section>
 
+      <!-- MOD: 발표 중 오타 없이 핵심 케이스를 재현하는 프리셋 시나리오 -->
+      <section class="panel scenario-panel">
+        <div class="panel__header panel__header--tight">
+          <div>
+            <h2>발표용 빠른 시나리오</h2>
+            <p>모르는 사람에게 보여줄 때는 한 번에 하나의 변화만 보여주는 것이 가장 쉽습니다.</p>
+          </div>
+          <p class="panel__meta">프리셋은 현재 실제 화면을 기준으로 다음 초안을 자동으로 만듭니다.</p>
+        </div>
+
+        <div class="scenario-buttons">
+          <button class="chip-button" type="button" data-scenario="text">제목만 바꾸기</button>
+          <button class="chip-button" type="button" data-scenario="props">속성만 바꾸기</button>
+          <button class="chip-button" type="button" data-scenario="add">목록 1개 추가</button>
+          <button class="chip-button" type="button" data-scenario="remove">목록 1개 삭제</button>
+          <button class="chip-button" type="button" data-scenario="replace">루트 태그 바꾸기</button>
+          <button class="chip-button chip-button--secondary" type="button" data-scenario="sync">
+            현재 실제 화면 불러오기
+          </button>
+        </div>
+
+        <p id="scenario-message" class="scenario-note">
+          발표 전에 시나리오 버튼을 눌러 “오른쪽 후보 화면”을 빠르게 준비할 수 있습니다.
+        </p>
+      </section>
+
       <main class="workspace">
         <section class="panel">
           <div class="panel__header">
-            <h2>Actual Area</h2>
-            <p>Patch가 실제로 반영되는 기준 DOM입니다.</p>
+            <h2>1. 지금 실제 화면</h2>
+            <p>메인 페이지 안에 들어 있는 독립 웹페이지입니다. 변화 반영이 성공할 때만 바뀝니다.</p>
           </div>
-          <div id="real-root" class="surface surface--actual">
-            <section class="catalog-card" data-state="initial" data-theme="mint">
-              <header class="catalog-card__header">
-                <p class="catalog-card__eyebrow">Weekly Pick</p>
-                <h3>Crafton Jungle Snack Box</h3>
-              </header>
-              <p class="catalog-card__body">
-                오늘 오후 6시 전에 주문하면 <strong>내일 오전</strong> 출고 예정입니다.
-              </p>
-              <ul class="catalog-card__list">
-                <li data-item="apple">사과칩 2개</li>
-                <li data-item="banana">바나나쿠키 1개</li>
-                <li data-item="orange">오렌지티 3개</li>
-              </ul>
-              <footer class="catalog-card__footer">
-                <span class="sample-badge">Fresh Batch</span>
-                <button class="sample-cta" type="button" disabled>구성 보기</button>
-              </footer>
-            </section>
+
+          <!-- MOD: 메인 페이지 안에 실제 화면 전용 웹페이지를 넣기 위한 iframe -->
+          <div class="surface surface--browser surface--actual">
+            <iframe
+              id="real-frame"
+              class="surface-frame"
+              title="지금 실제 화면 웹페이지"
+              loading="eager"
+            ></iframe>
+          </div>
+
+          <div class="surface-legend">
+            <span class="legend-chip legend-chip--add">초록: 새로 추가</span>
+            <span class="legend-chip legend-chip--update">주황: 내용 또는 속성 변경</span>
+            <span class="legend-chip legend-chip--replace">파랑: 태그 교체</span>
+            <span class="legend-chip legend-chip--remove">빨강: 삭제가 일어난 위치</span>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel__header">
-            <h2>Test Preview</h2>
-            <p>textarea 입력을 canonical VDOM으로 파싱한 뒤 다시 렌더링한 미리보기입니다.</p>
+            <h2>2. 다음으로 바뀔 후보 화면</h2>
+            <p>메인 페이지 안에 들어 있는 또 다른 독립 웹페이지입니다. 실제 반영 전 비교용으로만 사용됩니다.</p>
           </div>
-          <div id="test-root" class="surface surface--preview"></div>
+
+          <!-- MOD: 메인 페이지 안에 후보 화면 전용 웹페이지를 넣기 위한 iframe -->
+          <div class="surface surface--browser surface--preview">
+            <iframe
+              id="test-frame"
+              class="surface-frame"
+              title="다음 후보 화면 웹페이지"
+              loading="eager"
+            ></iframe>
+          </div>
+          <p class="surface-caption">
+            오른쪽 작은 웹페이지는 비교용 문서입니다. 공백만 있는 글자와 주석은 정규 규칙에 따라 제외됩니다.
+          </p>
         </section>
       </main>
 
-      <section class="editor-grid">
+      <section class="insight-grid">
         <section class="panel panel--editor">
           <div class="panel__header">
-            <h2>HTML Input</h2>
-            <p>여기서 HTML 문자열을 수정하고 Patch 버튼으로 실제 영역에 반영합니다.</p>
+            <h2>3. 직접 수정해 보기</h2>
+            <p>원하는 HTML을 적으면 오른쪽 후보 화면이 먼저 바뀌고, 변화 반영 버튼을 눌러야 왼쪽에 반영됩니다.</p>
           </div>
-          <label class="editor-label" for="html-input">테스트 HTML 문자열</label>
+
+          <label class="editor-label" for="html-input">다음 화면 HTML 코드</label>
           <textarea id="html-input" class="editor-textarea" spellcheck="false"></textarea>
+
           <div class="editor-meta">
             <p id="validation-message" class="form-note" data-state="ok">
               초기 DOM을 로드하는 중입니다.
             </p>
             <p class="form-hint">
-              최상위 element는 1개만 허용됩니다. 공백-only Text와 Comment는 자동으로
-              제외됩니다.
+              맨 바깥 요소는 1개만 허용됩니다. 공백만 있는 글자와 주석은 자동으로 제외됩니다.
             </p>
           </div>
         </section>
 
-        <section class="panel panel--tips">
+        <!-- MOD: raw JSON보다 먼저 사람 말로 현재 상태를 설명하는 패널 -->
+        <section class="panel panel--explain">
           <div class="panel__header">
-            <h2>Quick Try</h2>
-            <p>발표 데모에서 바로 보여주기 좋은 수정 포인트입니다.</p>
+            <h2>컴퓨터가 찾은 변화</h2>
+            <p>개발 용어가 익숙하지 않아도 따라올 수 있도록 사람 말로 먼저 설명합니다.</p>
           </div>
-          <ul class="tip-list">
-            <li>`h3` 텍스트를 바꿔서 `TEXT_UPDATE`를 확인해 보세요.</li>
-            <li>`data-theme`나 `class`를 수정해서 `PROPS_UPDATE`를 확인해 보세요.</li>
-            <li>`li`를 추가하거나 삭제해서 `ADD` / `REMOVE`를 확인해 보세요.</li>
-            <li>`section`을 `article`로 바꿔 루트 `REPLACE`를 확인해 보세요.</li>
-            <li>Patch 후 Undo / Redo로 history 전체 동기화를 확인해 보세요.</li>
-          </ul>
+
+          <p id="story-status" class="story-status">
+            지금은 초기 화면을 준비하는 단계입니다.
+          </p>
+
+          <ul id="change-summary-list" class="change-summary-list"></ul>
+
+          <div class="speaker-note">
+            <span class="speaker-note__label">발표 멘트 예시</span>
+            <p id="speaker-note">
+              “오른쪽은 다음 후보 화면이고, 변화 반영을 누르면 왼쪽 실제 화면에 바뀐 부분만 반영됩니다.”
+            </p>
+          </div>
         </section>
       </section>
 
-      <section class="inspector-grid">
-        <section class="panel panel--compact">
-          <div class="panel__header">
-            <h2>Patch Log</h2>
-            <p>현재 cycle에서 생성된 patch 목록과 history 처리 결과를 표시합니다.</p>
-          </div>
-          <pre id="patch-log" class="code-box">[status] Waiting for initialization.</pre>
-        </section>
+      <!-- MOD: 기술 정보는 숨김 가능한 details로 내려서 초심자 시선을 덜 분산시킴 -->
+      <section class="tech-grid">
+        <details class="tech-card">
+          <summary>기술 로그 보기</summary>
+          <p class="tech-card__hint">반영 작업 원본을 보고 싶은 사람을 위한 영역입니다.</p>
+          <pre id="patch-log" class="code-box">[상태] 초기화를 기다리는 중입니다.</pre>
+        </details>
 
-        <section class="panel panel--compact">
-          <div class="panel__header">
-            <h2>Virtual DOM Preview</h2>
-            <p>현재 canonical VDOM 스냅샷을 JSON으로 확인합니다.</p>
-          </div>
+        <details class="tech-card">
+          <summary>가상 DOM JSON 보기</summary>
+          <p class="tech-card__hint">현재 정규화된 가상 DOM 스냅샷을 그대로 보여줍니다.</p>
           <pre id="vdom-preview" class="code-box">{}</pre>
-        </section>
+        </details>
       </section>
+
+      <!-- MOD: 화면에는 직접 노출하지 않고, iframe 안의 실제/후보 페이지 초기 상태로만 사용하는 샘플 템플릿 -->
+      <template id="initial-card-template">
+        <section class="catalog-card" data-state="initial" data-theme="mint">
+          <header class="catalog-card__header">
+            <p class="catalog-card__eyebrow">이번 주 추천</p>
+            <h3>정글 간식 꾸러미</h3>
+          </header>
+          <p class="catalog-card__body">
+            오늘 오후 6시 전에 주문하면 <strong>내일 오전</strong> 출고할 예정입니다.
+          </p>
+          <ul class="catalog-card__list">
+            <li data-item="apple">사과칩 2개</li>
+            <li data-item="banana">바나나쿠키 1개</li>
+            <li data-item="orange">오렌지티 3개</li>
+          </ul>
+          <footer class="catalog-card__footer">
+            <span class="sample-badge">오늘 준비됨</span>
+            <button class="sample-cta" type="button" disabled>구성 보기</button>
+          </footer>
+        </section>
+      </template>
     </div>
 
     <script type="module" src="./main.js"></script>
