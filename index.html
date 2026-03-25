@@ -271,13 +271,15 @@
         </section>
       </section>
 
-      <!-- MOD: 기술 정보는 숨김 가능한 details로 내려서 초심자 시선을 덜 분산시킴 -->
+      <!-- MOD: 기술 정보는 바로 보여주고, 초심자도 스크롤만 하면 바로 볼 수 있게 유지 -->
       <section class="tech-grid">
-        <details class="tech-card">
-          <summary>기술 로그 보기</summary>
+        <section class="tech-card">
+          <div class="panel__header tech-card__header">
+            <h2>기술 로그 보기</h2>
+          </div>
           <p class="tech-card__hint">수사 보드에 적용될 원본 작업 목록을 보고 싶은 사람을 위한 영역입니다.</p>
           <pre id="patch-log" class="code-box">[상태] 초기화를 기다리는 중입니다.</pre>
-        </details>
+        </section>
       </section>
 
       <!-- MOD: 화면에는 직접 노출하지 않고, iframe 안의 실제/후보 페이지 초기 상태로만 사용하는 샘플 템플릿 -->

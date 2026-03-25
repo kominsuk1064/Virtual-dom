@@ -32,7 +32,7 @@ html {
 
 body {
   margin: 0;
-  font-family: "Bahnschrift", "Malgun Gothic", "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   color: var(--text);
   background:
     radial-gradient(circle at 14% 10%, rgba(245, 224, 184, 0.08), transparent 16%),
@@ -97,7 +97,9 @@ select {
 .hero h1,
 .panel__header h2,
 .story-card h2 {
-  font-family: "Cambria", "Times New Roman", "Batang", serif;
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.04em;
 }
 
 .hero h1 {
@@ -268,27 +270,27 @@ select {
 }
 
 #reset-button {
-  border-color: rgba(157, 106, 49, 0.34);
-  background: linear-gradient(135deg, rgba(157, 106, 49, 0.16), rgba(255, 248, 232, 0.96));
-  color: #70451d;
-  font-weight: 700;
+  border-color: rgba(120, 88, 62, 0.22);
+  background: linear-gradient(180deg, #f9f0e2 0%, #e7d4b6 100%);
+  color: #5e3e2b;
+  font-weight: 600;
 }
 
 #reset-button:hover:not(:disabled) {
-  border-color: rgba(157, 106, 49, 0.52);
-  background: linear-gradient(135deg, rgba(157, 106, 49, 0.22), rgba(255, 246, 226, 1));
+  border-color: rgba(120, 88, 62, 0.34);
+  background: linear-gradient(180deg, #f5ead9 0%, #e0ccb0 100%);
 }
 
 #benchmark-button {
-  border-color: rgba(66, 95, 115, 0.36);
-  background: linear-gradient(135deg, rgba(66, 95, 115, 0.18), rgba(242, 247, 251, 0.96));
-  color: #2a5368;
-  font-weight: 700;
+  border-color: rgba(104, 96, 90, 0.24);
+  background: linear-gradient(180deg, #f3e8dc 0%, #deccb8 100%);
+  color: #50433d;
+  font-weight: 600;
 }
 
 #benchmark-button:hover:not(:disabled) {
-  border-color: rgba(66, 95, 115, 0.54);
-  background: linear-gradient(135deg, rgba(66, 95, 115, 0.24), rgba(236, 244, 249, 1));
+  border-color: rgba(104, 96, 90, 0.36);
+  background: linear-gradient(180deg, #ede1d5 0%, #d7c2ae 100%);
 }
 
 .visually-hidden {
@@ -375,15 +377,15 @@ select {
 }
 
 .toolbar__scenario-actions .chip-button[data-scenario="sync"] {
-  border-color: rgba(21, 111, 99, 0.3);
-  background: linear-gradient(135deg, rgba(21, 111, 99, 0.14), rgba(242, 251, 248, 0.96));
-  color: #17675c;
-  font-weight: 700;
+  border-color: rgba(98, 89, 81, 0.22);
+  background: linear-gradient(180deg, #efe3d6 0%, #dbc7b3 100%);
+  color: #4f443d;
+  font-weight: 600;
 }
 
 .toolbar__scenario-actions .chip-button[data-scenario="sync"]:hover:not(:disabled) {
-  border-color: rgba(21, 111, 99, 0.46);
-  background: linear-gradient(135deg, rgba(21, 111, 99, 0.2), rgba(236, 248, 244, 1));
+  border-color: rgba(98, 89, 81, 0.34);
+  background: linear-gradient(180deg, #e9dbce 0%, #d3bca7 100%);
 }
 
 .scenario-note {
@@ -557,8 +559,11 @@ select {
 
 .photo-lab__preview {
   position: relative;
+  justify-self: start;
   overflow: hidden;
-  min-height: 200px;
+  width: min(100%, 220px);
+  aspect-ratio: 4 / 5;
+  min-height: 0;
   border-radius: 8px;
   border: 2px solid rgba(98, 69, 53, 0.24);
   background:
@@ -580,7 +585,7 @@ select {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 200px;
+  min-height: 0;
   object-fit: cover;
 }
 
@@ -782,42 +787,23 @@ select {
   text-transform: uppercase;
 }
 
-/* MOD: 기술 정보는 details로 접어서 필요한 사람만 열어 보게 함 */
+/* MOD: 기술 로그는 항상 보이게 유지 */
 .tech-card {
-  padding: 0;
+  padding: 18px;
   overflow: hidden;
 }
 
-.tech-card summary {
-  cursor: pointer;
-  padding: 16px 18px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  list-style: none;
-}
-
-.tech-card summary::-webkit-details-marker {
-  display: none;
-}
-
-.tech-card summary::after {
-  content: "열기";
-  float: right;
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.tech-card[open] summary::after {
-  content: "닫기";
+.tech-card__header {
+  margin-bottom: 10px;
 }
 
 .tech-card__hint {
-  padding: 0 18px 12px;
+  margin: 0 0 12px;
   font-size: 14px;
 }
 
 .code-box {
-  margin: 0 18px 18px;
+  margin: 0;
   min-height: 200px;
   padding: 16px;
   border: 1px solid var(--code-line);
