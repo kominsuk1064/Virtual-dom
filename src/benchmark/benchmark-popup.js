@@ -260,11 +260,14 @@ async function runDOMBenchmark() {
 
   timer.textContent = "⏱ 측정 중…";
 
+  // innerHTML 모드: HTML 문자열 생성은 측정 밖 (순수 DOM 구축 비용만 비교)
+  const htmlStr = domApiMode === "native" ? vdomToHtml(modifiedVdom) : null;
+
   const t0 = performance.now();
 
   if (domApiMode === "native") {
     // 브라우저 innerHTML: HTML 파서가 전체 트리를 파싱·구축
-    container.innerHTML = vdomToHtml(modifiedVdom);
+    container.innerHTML = htmlStr;
   } else {
     // 우리 DOM API: createElement + appendChild로 전체 재구축
     container.replaceChildren();
