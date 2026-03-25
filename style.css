@@ -30,7 +30,7 @@ html {
 
 body {
   margin: 0;
-  font-family: "Trebuchet MS", "Apple SD Gothic Neo", sans-serif;
+  font-family: "Bahnschrift", "Malgun Gothic", "Segoe UI", sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at 14% 10%, rgba(245, 224, 184, 0.08), transparent 16%),
@@ -59,7 +59,7 @@ input {
 .metric-card,
 .tech-card {
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 14px;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -86,6 +86,7 @@ input {
 .scenario-panel,
 .workspace,
 .insight-grid,
+.code-edit-grid,
 .tech-grid {
   margin-bottom: 14px;
 }
@@ -93,7 +94,7 @@ input {
 .hero h1,
 .panel__header h2,
 .story-card h2 {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: "Cambria", "Times New Roman", "Batang", serif;
 }
 
 .hero h1 {
@@ -187,6 +188,7 @@ input {
 .toolbar,
 .workspace,
 .insight-grid,
+.code-edit-grid,
 .tech-grid {
   display: grid;
   gap: 14px;
@@ -216,13 +218,15 @@ input {
 
 .button,
 .chip-button {
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(255, 251, 244, 0.82);
+  border: 2px solid rgba(76, 53, 43, 0.36);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #fff9ef 0%, #efe1c8 100%);
   color: var(--text);
-  padding: 12px 18px;
+  padding: 11px 16px;
   cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: 3px 3px 0 rgba(57, 37, 28, 0.18);
+  font-weight: 700;
+  letter-spacing: 0.02em;
   transition:
     transform 180ms ease,
     border-color 180ms ease,
@@ -233,29 +237,30 @@ input {
 
 .button:hover:not(:disabled),
 .chip-button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  border-color: rgba(21, 111, 99, 0.35);
+  transform: translate(-1px, -1px);
+  border-color: rgba(143, 47, 34, 0.38);
+  box-shadow: 5px 5px 0 rgba(57, 37, 28, 0.14);
 }
 
 .button:disabled,
 .chip-button:disabled {
   opacity: 0.48;
   cursor: not-allowed;
-  box-shadow: none;
+  box-shadow: 1px 1px 0 rgba(57, 37, 28, 0.1);
 }
 
 .button--primary {
-  border-color: var(--accent);
-  background: linear-gradient(135deg, var(--accent) 0%, #b8432d 100%);
+  border-color: #6f2017;
+  background: linear-gradient(180deg, #a33426 0%, #762117 100%);
   color: white;
 }
 
 .button--primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--accent-strong) 0%, var(--accent) 100%);
+  background: linear-gradient(180deg, #8e2b20 0%, #631a13 100%);
 }
 
 .button--subtle {
-  background: rgba(98, 69, 53, 0.08);
+  background: linear-gradient(180deg, #fbf4e6 0%, #ead9bb 100%);
   color: #56352a;
 }
 
@@ -334,15 +339,12 @@ input {
 }
 
 .chip-button {
-  padding: 11px 16px;
-  border-radius: 16px;
-  background: #fffaf1;
-  box-shadow: none;
+  background: linear-gradient(180deg, #f8eedf 0%, #e8d6b8 100%);
 }
 
 .chip-button--secondary {
-  background: rgba(66, 95, 115, 0.1);
-  color: var(--sky);
+  background: linear-gradient(180deg, #ebdfd2 0%, #d8c2b0 100%);
+  color: #4b4038;
 }
 
 .scenario-note {
@@ -358,12 +360,17 @@ input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.code-edit-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .tech-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 /* MOD: 아래 편집/기술 패널을 위 실제/후보 화면 2칸을 합친 전체 폭으로 확장 */
 .insight-grid > *,
+.code-edit-grid > *,
 .tech-grid > * {
   grid-column: 1 / -1;
 }
@@ -371,7 +378,7 @@ input {
 .surface {
   min-height: 440px;
   border: 1px dashed rgba(98, 69, 53, 0.24);
-  border-radius: 22px;
+  border-radius: 12px;
   padding: 18px;
   overflow: auto;
   transition: box-shadow 180ms ease, border-color 180ms ease;
@@ -417,7 +424,7 @@ input {
   place-items: center;
   min-height: 360px;
   padding: 20px;
-  border-radius: 18px;
+  border-radius: 8px;
   background: linear-gradient(180deg, rgba(181, 63, 63, 0.06), rgba(181, 63, 63, 0.02));
   text-align: center;
 }
@@ -439,9 +446,11 @@ input {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
-  border-radius: 999px;
+  border: 1px solid rgba(84, 60, 48, 0.16);
+  border-radius: 5px;
   font-size: 13px;
   font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
 }
 
 .legend-chip--add {
@@ -485,7 +494,7 @@ input {
   gap: 12px;
   padding: 16px;
   border: 1px solid rgba(98, 69, 53, 0.16);
-  border-radius: 20px;
+  border-radius: 10px;
   background: linear-gradient(180deg, rgba(255, 248, 238, 0.92), rgba(245, 233, 214, 0.94));
   box-shadow: 0 10px 18px rgba(26, 16, 12, 0.06);
 }
@@ -511,8 +520,8 @@ input {
   position: relative;
   overflow: hidden;
   min-height: 200px;
-  border-radius: 22px;
-  border: 1px solid rgba(98, 69, 53, 0.18);
+  border-radius: 8px;
+  border: 2px solid rgba(98, 69, 53, 0.24);
   background:
     linear-gradient(180deg, rgba(62, 40, 29, 0.9), rgba(42, 28, 20, 0.96));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
@@ -556,17 +565,18 @@ input {
   justify-content: center;
   min-height: 44px;
   padding: 0 14px;
-  border: 1px solid rgba(98, 69, 53, 0.18);
-  border-radius: 999px;
-  background: rgba(255, 250, 244, 0.84);
+  border: 2px solid rgba(84, 60, 48, 0.32);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #fff8ec 0%, #ead7ba 100%);
   color: var(--text);
   cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(57, 37, 28, 0.14);
   transition: border-color 180ms ease, transform 180ms ease, background 180ms ease;
 }
 
 .photo-upload:hover,
 .photo-reset:hover {
-  transform: translateY(-1px);
+  transform: translate(-1px, -1px);
   border-color: rgba(143, 47, 34, 0.34);
   background: rgba(255, 248, 238, 0.96);
 }
@@ -591,8 +601,8 @@ input {
   width: 100%;
   min-height: 54px;
   padding: 14px 16px;
-  border: 1px solid rgba(112, 95, 72, 0.18);
-  border-radius: 18px;
+  border: 2px solid rgba(98, 69, 53, 0.22);
+  border-radius: 6px;
   background: rgba(255, 252, 246, 0.9);
   color: var(--text);
   font-size: 15px;
@@ -601,14 +611,42 @@ input {
 }
 
 .field-input:focus {
-  outline: 2px solid rgba(21, 111, 99, 0.24);
+  outline: 2px solid rgba(143, 47, 34, 0.24);
   outline-offset: 2px;
-  border-color: rgba(21, 111, 99, 0.36);
+  border-color: rgba(143, 47, 34, 0.36);
 }
 
 .field-input--textarea {
   min-height: 170px;
   resize: vertical;
+}
+
+.panel--code-editor {
+  display: grid;
+  gap: 14px;
+}
+
+.code-editor-textarea {
+  width: 100%;
+  min-height: 420px;
+  padding: 18px;
+  border: 2px solid rgba(74, 53, 42, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%),
+    linear-gradient(180deg, #221915 0%, #1a1310 100%);
+  color: #f5e5d4;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  resize: vertical;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.code-editor-textarea:focus {
+  outline: 2px solid rgba(143, 47, 34, 0.22);
+  outline-offset: 2px;
+  border-color: rgba(143, 47, 34, 0.36);
 }
 
 .editor-meta {
@@ -623,7 +661,7 @@ input {
 
 .form-note {
   padding: 12px 14px;
-  border-radius: 16px;
+  border-radius: 6px;
   font-weight: 600;
 }
 
@@ -715,6 +753,7 @@ input {
   cursor: pointer;
   padding: 16px 18px;
   font-weight: 700;
+  letter-spacing: 0.02em;
   list-style: none;
 }
 
@@ -743,7 +782,7 @@ input {
   min-height: 200px;
   padding: 16px;
   border: 1px solid var(--code-line);
-  border-radius: 20px;
+  border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 24%),
     linear-gradient(180deg, #1f1715 0%, #2b1f1c 100%);
@@ -902,6 +941,7 @@ input {
   .toolbar,
   .workspace,
   .insight-grid,
+  .code-edit-grid,
   .tech-grid,
   .panel__header--tight {
     grid-template-columns: 1fr;
@@ -943,13 +983,13 @@ input {
   .metric-card,
   .story-card,
   .tech-card {
-    border-radius: 20px;
+    border-radius: 12px;
   }
 
   .surface,
   .field-input,
   .code-box {
-    border-radius: 18px;
+    border-radius: 8px;
   }
 
   .surface {
