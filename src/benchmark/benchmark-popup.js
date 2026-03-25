@@ -57,7 +57,7 @@ function buildPopupDOM() {
     <div class="bench-modal">
       <div class="bench-titlebar">
         <span class="bench-titlebar__title">⚡ DOM vs VDOM 벤치마크</span>
-        <button class="bench-titlebar__close" aria-label="닫기">✕</button>
+        <button type="button" class="bench-titlebar__close" aria-label="닫기">✕</button>
       </div>
 
       <div class="bench-scenarios">
@@ -80,12 +80,12 @@ function buildPopupDOM() {
           <div class="bench-panel__header">
             <span class="bench-panel__label">DOM</span>
             <div class="bench-api-toggle" data-ref="domApiToggle">
-              <button class="bench-api-btn is-active" data-api="custom">우리 DOM API</button>
-              <button class="bench-api-btn" data-api="native">브라우저 innerHTML</button>
+              <button type="button" class="bench-api-btn is-active" data-api="custom">우리 DOM API</button>
+              <button type="button" class="bench-api-btn" data-api="native">브라우저 innerHTML</button>
             </div>
-            <span class="bench-panel__sublabel" data-ref="domSublabel">createElement + appendChild</span>
             <span class="bench-timer" data-ref="domTimer">⏱ 대기 중</span>
-            <button class="bench-run-btn" data-ref="domRunBtn">▶ 실행</button>
+            <button type="button" class="bench-run-btn" data-ref="domRunBtn">▶ 실행</button>
+            <span class="bench-panel__sublabel" data-ref="domSublabel">createElement + appendChild</span>
           </div>
           <div class="bench-browser">
             <div class="bench-browser__bar">
@@ -106,9 +106,9 @@ function buildPopupDOM() {
         <div class="bench-panel bench-panel--vdom">
           <div class="bench-panel__header">
             <span class="bench-panel__label">VDOM</span>
-            <span class="bench-panel__sublabel">key diff + O(1) patch</span>
             <span class="bench-timer" data-ref="vdomTimer">⏱ 대기 중</span>
-            <button class="bench-run-btn" data-ref="vdomRunBtn">▶ 실행</button>
+            <button type="button" class="bench-run-btn" data-ref="vdomRunBtn">▶ 실행</button>
+            <span class="bench-panel__sublabel">key diff + O(1) patch</span>
           </div>
           <div class="bench-browser">
             <div class="bench-browser__bar">
@@ -127,7 +127,7 @@ function buildPopupDOM() {
       </div>
 
       <div class="bench-result-bar">
-        <button class="bench-run-both" data-ref="runBothBtn">⚡ 양쪽 동시 실행</button>
+        <button type="button" class="bench-run-both" data-ref="runBothBtn">⚡ 양쪽 동시 실행</button>
         <span class="bench-result-bar__text" data-ref="resultText"></span>
       </div>
     </div>
