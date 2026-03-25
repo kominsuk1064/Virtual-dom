@@ -13,14 +13,6 @@ function makeLi(text, key) {
   };
 }
 
-function makeDiv(className, text) {
-  return {
-    type: "div",
-    props: { class: className },
-    children: [{ type: "#text", text }],
-  };
-}
-
 /**
  * 트리 노드 수 추정 (S4 노드 폭발 방지용)
  */
@@ -134,6 +126,7 @@ export const scenarios = [
       { key: "count", label: "항목 수", default: 3000, min: 100, max: 50000, step: 100 },
       { key: "changeRatio", label: "변경 비율(%)", default: 5, min: 1, max: 100, step: 1 },
     ],
+    estimateNodes: ({ count }) => count + 1,
     generateInitial: ({ count }) => bulkUpdateInitial(count),
     generateModified: ({ count, changeRatio }) => bulkUpdateModified(count, changeRatio / 100),
   },
@@ -146,6 +139,7 @@ export const scenarios = [
       { key: "count", label: "전체 항목 수", default: 1000, min: 100, max: 50000, step: 100 },
       { key: "insertCount", label: "삽입 항목 수", default: 100, min: 10, max: 5000, step: 10 },
     ],
+    estimateNodes: ({ count, insertCount }) => count + insertCount + 1,
     generateInitial: ({ count }) => middleInsertInitial(count),
     generateModified: ({ count, insertCount }) =>
       middleInsertModified(count, Math.min(insertCount, count)),
@@ -158,6 +152,7 @@ export const scenarios = [
     params: [
       { key: "count", label: "요소 수", default: 1000, min: 100, max: 50000, step: 100 },
     ],
+    estimateNodes: ({ count }) => count + 1,
     generateInitial: ({ count }) => propsToggleInitial(count),
     generateModified: ({ count }) => propsToggleModified(count),
   },

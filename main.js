@@ -465,6 +465,7 @@ function createEvidencePhoto(title, badge, theme) {
  * Push a VDOM snapshot back into the structured editor fields.
  */
 function syncEditorFieldsFromVdom(vdom) {
+  // nodeMap을 리셋하지 않음: 임시 DOM 생성이며 cloneVdom이 새 객체를 만들어 기존 매핑 미간섭 (WeakMap GC 자동 정리)
   const root = vdomToDomMapped(cloneVdom(vdom), nodeMap);
 
   if (!root) {
@@ -858,6 +859,7 @@ function renderChangeSummary(mode, options = {}) {
  */
 function buildEditableRootFromCurrentState() {
   if (currentVDOM) {
+    // nodeMap을 리셋하지 않음: 에디터용 임시 DOM이며 cloneVdom이 별도 객체를 생성 (WeakMap GC 자동 정리)
     return vdomToDomMapped(cloneVdom(currentVDOM), nodeMap);
   }
 

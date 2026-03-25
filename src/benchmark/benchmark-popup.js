@@ -17,6 +17,7 @@ import { applyPatchesMapped } from "../optimized/patch-mapped.js";
 
 let overlayEl = null;
 let currentScenario = null;
+let isBenchmarkRunning = false;
 
 // 타이밍 결과 저장
 let domTimeMs = null;
@@ -209,7 +210,8 @@ function renderInitialDOM(container, vdom) {
  * (실제 프레임워크 없이 상태 변경 시의 "나이브" 접근)
  */
 async function runDOMBenchmark() {
-  if (!currentScenario) return;
+  if (!currentScenario || isBenchmarkRunning) return;
+  isBenchmarkRunning = true;
 
   const btn = refs.domRunBtn;
   const timer = refs.domTimer;
@@ -248,6 +250,7 @@ async function runDOMBenchmark() {
   timer.classList.add("is-done");
   btn.classList.remove("is-running");
   btn.disabled = false;
+  isBenchmarkRunning = false;
 
   updateResultBar();
 }
@@ -257,7 +260,8 @@ async function runDOMBenchmark() {
  * (src/optimized/ 모듈 사용)
  */
 async function runVDOMBenchmark() {
-  if (!currentScenario) return;
+  if (!currentScenario || isBenchmarkRunning) return;
+  isBenchmarkRunning = true;
 
   const btn = refs.vdomRunBtn;
   const timer = refs.vdomTimer;
@@ -306,6 +310,7 @@ async function runVDOMBenchmark() {
   timer.classList.add("is-done");
   btn.classList.remove("is-running");
   btn.disabled = false;
+  isBenchmarkRunning = false;
 
   updateResultBar();
 }
@@ -345,6 +350,7 @@ function updateResultBar() {
    ──────────────────────────────── */
 
 function selectScenario(id) {
+  if (isBenchmarkRunning) return;
   const scenario = scenarios.find((s) => s.id === id);
   if (!scenario) return;
 
