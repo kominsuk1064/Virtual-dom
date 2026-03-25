@@ -397,12 +397,16 @@ async function runVDOMBenchmark() {
 }
 
 async function runBothBenchmarks() {
+  if (isBenchmarkRunning) return;
   refs.runBothBtn.disabled = true;
   domTimeMs = null;
   vdomTimeMs = null;
   refs.resultText.textContent = "";
 
+  // 쿨다운 무시하고 순차 실행 (내부에서 직접 lastRunTime 설정)
+  lastRunTime = 0;
   await runDOMBenchmark();
+  lastRunTime = 0;
   await runVDOMBenchmark();
 
   refs.runBothBtn.disabled = false;
