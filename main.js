@@ -34,6 +34,7 @@ const patchLog = document.querySelector("#patch-log");
 const directCodeEditor = document.querySelector("#direct-code-editor");
 const directCodeMessage = document.querySelector("#direct-code-message");
 const vdomPreview = document.querySelector("#vdom-preview");
+const scrollTopButton = document.querySelector("#scroll-top-button");
 const validationMessage = document.querySelector("#validation-message");
 const stateIndicator = document.querySelector("#state-indicator");
 const historyIndicator = document.querySelector("#history-indicator");
@@ -102,6 +103,9 @@ const PHOTO_RESET_COOLDOWN_MS = 1000;
 const MAX_PHOTO_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const ALLOWED_PHOTO_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
+const UPLOADED_PHOTO_PLACEHOLDER_PREFIX = "uploaded-suspect-";
+const activePhotoObjectUrls = new Set();
+const SCROLL_TOP_BUTTON_THRESHOLD = 240;
 
 const frameReadyState = {
   actual: false,
@@ -260,7 +264,7 @@ function renderPatchLog(title, patches = [], detailLines = []) {
     lines.push("[작업] 없음");
   } else {
     patches.forEach((patch, index) => {
-      lines.push(`${String(index + 1).padStart(2, "0")}. ${JSON.stringify(patch)}`);
+      lines.push(`${String(index + 1).padStart(2, "0")}. ${stringifyInspectableJson(patch)}`);
     });
   }
 
@@ -278,7 +282,7 @@ function renderVdomPreview(vdom, caption) {
   const sections = [caption];
 
   if (vdom) {
-    sections.push(JSON.stringify(vdom, null, 2));
+    sections.push(stringifyInspectableJson(vdom));
   } else {
     sections.push("{}");
   }
@@ -334,6 +338,17 @@ function updateButtonState() {
   redoButton.disabled = isCoolingDown || historyIndex >= history.length - 1;
   resetButton.disabled = isCoolingDown || (history.length === 1 && historyIndex === 0);
   updateHistoryJumpActionState();
+}
+
+/**
+ * Toggle the floating bullet button depending on the current scroll position.
+ */
+function updateScrollTopButtonVisibility() {
+  if (!scrollTopButton) {
+    return;
+  }
+
+  scrollTopButton.dataset.visible = window.scrollY > SCROLL_TOP_BUTTON_THRESHOLD ? "true" : "false";
 }
 
 /**
@@ -563,9 +578,9 @@ function writePhotoToken(field, token) {
     return;
   }
 
-  if (token.startsWith("data:image/")) {
+  if (isUploadedPhotoToken(token)) {
     field.dataset.photoMode = "upload";
-    field.dataset.photoValue = token;
+    field.dataset.photoValue = rememberPhotoObjectUrl(token);
     return;
   }
 
@@ -598,6 +613,63 @@ function describePhotoSource(field) {
   }
 
   return "기본 수배 사진 사용 중";
+}
+
+/**
+ * Check whether one token points to an uploaded image source.
+ */
+function isUploadedPhotoToken(token) {
+  return typeof token === "string" && (token.startsWith("blob:") || token.startsWith("data:image/"));
+}
+
+/**
+ * Return a stable placeholder used in the direct code editor for uploaded photos.
+ */
+function getUploadedPhotoPlaceholder(slot) {
+  return `${UPLOADED_PHOTO_PLACEHOLDER_PREFIX}${slot}`;
+}
+
+/**
+ * Keep track of generated object URLs so they can be released on page exit.
+ */
+function rememberPhotoObjectUrl(token) {
+  if (typeof token === "string" && token.startsWith("blob:")) {
+    activePhotoObjectUrls.add(token);
+  }
+
+  return token;
+}
+
+/**
+ * Replace heavy image sources with readable placeholders in logs and inspectors.
+ */
+function simplifyInspectableValue(key, value) {
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  if (key === "src" || key === "data-photo-input") {
+    if (value.startsWith("blob:")) {
+      return "[uploaded-photo:blob-url]";
+    }
+
+    if (value.startsWith("data:image/svg+xml")) {
+      return "[auto-generated-suspect-photo]";
+    }
+
+    if (value.startsWith("data:image/")) {
+      return "[uploaded-photo:inline-data]";
+    }
+  }
+
+  return value;
+}
+
+/**
+ * Stringify logs and preview JSON without dumping full uploaded image payloads.
+ */
+function stringifyInspectableJson(value) {
+  return JSON.stringify(value, (key, currentValue) => simplifyInspectableValue(key, currentValue), 2);
 }
 
 /**
@@ -724,6 +796,14 @@ function prepareDomForCodeEditor(root) {
       image.setAttribute("src", `auto-suspect-${slot}`);
       image.dataset.photoInput = "";
       image.alt = `${name} 기본 수배 사진`;
+      return;
+    }
+
+    if (isUploadedPhotoToken(token)) {
+      const placeholder = getUploadedPhotoPlaceholder(slot);
+      image.setAttribute("src", placeholder);
+      image.dataset.photoInput = placeholder;
+      image.alt = `${name} 업로드 사진`;
     }
   });
 
@@ -776,10 +856,21 @@ function normalizeRootFromDirectCode(root) {
     }
 
     const source = image.getAttribute("src")?.trim() ?? "";
+    const placeholder = getUploadedPhotoPlaceholder(slot);
 
     if (!source || source === `auto-suspect-${slot}`) {
       image.setAttribute("src", createDefaultSuspectPhoto(name, slot, theme));
       image.dataset.photoInput = "";
+    } else if (source === placeholder || image.dataset.photoInput === placeholder) {
+      const savedToken = readPhotoToken(suspectPhotoControls[slot]?.field);
+
+      if (savedToken) {
+        image.setAttribute("src", resolvePhotoSource(savedToken, name, slot, theme));
+        image.dataset.photoInput = savedToken;
+      } else {
+        image.setAttribute("src", createDefaultSuspectPhoto(name, slot, theme));
+        image.dataset.photoInput = "";
+      }
     } else {
       image.dataset.photoInput = source;
     }
@@ -1750,13 +1841,10 @@ async function bootstrap() {
         return;
       }
 
-      const reader = new FileReader();
-      reader.addEventListener("load", () => {
-        writePhotoToken(control.field, typeof reader.result === "string" ? reader.result : "");
-        control.file.value = "";
-        refreshPreviewFromEditor("업로드한 용의자 사진으로 가설 보드를 다시 계산했습니다.");
-      });
-      reader.readAsDataURL(file);
+      const objectUrl = rememberPhotoObjectUrl(URL.createObjectURL(file));
+      writePhotoToken(control.field, objectUrl);
+      control.file.value = "";
+      refreshPreviewFromEditor("업로드한 용의자 사진으로 가설 보드를 다시 계산했습니다.");
     });
   });
 
@@ -1793,8 +1881,21 @@ async function bootstrap() {
   undoButton.addEventListener("click", withPrimaryActionCooldown(handleUndo));
   redoButton.addEventListener("click", withPrimaryActionCooldown(handleRedo));
   resetButton.addEventListener("click", withPrimaryActionCooldown(handleReset));
+  scrollTopButton?.addEventListener("click", () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  });
+  window.addEventListener("scroll", updateScrollTopButtonVisibility, { passive: true });
 
   init();
+  updateScrollTopButtonVisibility();
 }
 
 bootstrap();
+
+window.addEventListener("beforeunload", () => {
+  activePhotoObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+  activePhotoObjectUrls.clear();
+});
