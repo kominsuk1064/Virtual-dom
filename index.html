@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>처음 보는 사람도 이해하는 가상 DOM 놀이터</title>
     <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./src/benchmark/benchmark-popup.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -67,6 +68,7 @@
           <button id="undo-button" class="button" type="button" disabled>이전 상태</button>
           <button id="redo-button" class="button" type="button" disabled>다음 상태</button>
           <button id="reset-button" class="button button--subtle" type="button">처음 샘플로</button>
+          <button id="benchmark-button" class="button button--subtle" type="button">⚡ 벤치마크</button>
         </div>
 
         <div class="metric-grid">
@@ -238,5 +240,9 @@
     </div>
 
     <script type="module" src="./main.js"></script>
+    <script type="module">
+      import { openBenchmarkPopup } from "./src/benchmark/benchmark-popup.js";
+      document.getElementById("benchmark-button").addEventListener("click", openBenchmarkPopup);
+    </script>
   </body>
 </html>
