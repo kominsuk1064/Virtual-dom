@@ -1,0 +1,480 @@
+# VDOM 최적화 엔진 전체 적용 — 구현 프롬프트
+
+## 배경
+
+이 프로젝트는 바닐라 JS Virtual DOM 교육용 프로젝트이다.
+현재 `src/optimized/` 폴더에 벤치마크 전용 최적화 모듈이 있으며,
+이를 프로젝트 전체에 적용하는 작업이다.
+
+핵심 최적화:
+- key 기반 diff (index 순차 비교 → key 매칭)
+- WeakMap O(1) patch (getNodeByPath O(n) 반복 → WeakMap 직접 조회)
+- MOVE 패치 타입 추가 (순서 재배치 지원)
+
+⚠️ 설계 원칙 (구현 전체에 적용):
+nodeMap(WeakMap)은 현재 렌더 트리에 종속된 "캐시"다. 영속 상태 저장소가 아니다.
+렌더 트리가 교체되는 시점(cloneVdom/undo/redo/reset/iframe snapshot)에서는
+반드시 nodeMap을 폐기(new WeakMap())하고 vdomToDomMapped로 재구축해야 한다.
+source of truth는 항상 currentVDOM + 실제 DOM이며, nodeMap은 조회 성능을 위한 캐시일 뿐이다.
+
+
+## 절대 수정 금지 파일 (팀 계약)
+
+아래 파일은 팀원별 담당이며 시그니처/내용을 변경하면 안 된다:
+- src/vdom.js (팀A: domToVdom, vdomToDom, cloneVdom)
+- src/diff.js (팀B: diff)
+- src/patch.js (팀C: getNodeByPath, applyPatches)
+
+이 파일들은 원본 그대로 유지하고, 병렬로 존재하는
+src/optimized/ 모듈의 import 경로만 교체하는 방식으로 작업한다.
+
+
+## VDOM 스키마 (변경 없음)
+
+```js
+// 텍스트 노드
+{ type: "#text", text: "hello" }
+
+// 엘리먼트 노드
+{ type: "div", props: { class: "card" }, children: [] }
+```
+
+
+## 현재 파일별 의존 관계
+
+```
+main.js
+  ├─ import { diff } from "./src/diff.js"              ← line 696, 778
+  ├─ import { vdomToDom, cloneVdom } from "./src/vdom.js"  ← line 181, 548 (vdomToDom) / 13곳 (cloneVdom)
+  └─ applyPatches는 직접 호출하지 않음 (BroadcastChannel로 iframe에 위임)
+
+actual-site/app.js
+  ├─ import { applyPatches, getNodeByPath } from "../src/patch.js"
+  ├─ import { vdomToDom } from "../src/vdom.js"
+  ├─ applyPatches: line 104
+  ├─ vdomToDom: line 91
+  └─ getNodeByPath: line 23
+
+preview-site/app.js
+  ├─ import { getNodeByPath } from "../src/patch.js"
+  ├─ import { vdomToDom } from "../src/vdom.js"
+  ├─ vdomToDom: line 100
+  └─ getNodeByPath: line 32
+  └─ (applyPatches 미사용)
+```
+
+
+---
+## Phase 1: src/optimized/ 내부 수정 (기존 파일 무수정)
+---
+
+### 1-1. patch-mapped.js — 렌더 경로 통일 + nodeMap 갱신
+
+문제: ADD/REPLACE에서 `vdomToDom`(기본)을 사용하여 새 DOM이 nodeMap에 등록 안 됨.
+연속 패치 시 2회차부터 _ref 조회 실패.
+
+수정:
+- line 11: `import { vdomToDom } from "../vdom.js"` 삭제
+- 대신: `import { vdomToDomMapped } from "./vdom-mapped.js"` 추가
+- line 22 (ADD): `vdomToDom(patch.node)` → `vdomToDomMapped(patch.node, nodeMap)`
+- line 39 (REPLACE): `vdomToDom(patch.node)` → `vdomToDomMapped(patch.node, nodeMap)`
+
+
+### 1-2. diff-keyed.js — key 폴백 규칙
+
+문제: getKey()가 props.key만 확인. domToVdom 결과에는 props["data-key"]로 들어옴.
+
+수정 (line 31-33):
+```js
+// 기존
+function getKey(vnode) {
+  return vnode?.props?.key ?? null;
+}
+// 변경
+function getKey(vnode) {
+  return vnode?.props?.key ?? vnode?.props?.["data-key"] ?? null;
+}
+```
+
+
+### 1-3. diff-keyed.js + patch-mapped.js — MOVE 패치 타입 추가
+
+현재 key 매칭은 하지만 순서 재배치를 감지하지 못한다.
+
+diff-keyed.js에 추가할 것:
+- key 매칭 후 위치가 달라진 노드에 대해 MOVE 패치 생성
+- LIS(Longest Increasing Subsequence) 알고리즘으로 최소 이동 계산
+- 패치 포맷: `{ type: "MOVE", path, from, to, _ref, _parentRef }`
+
+patch-mapped.js에 추가할 것:
+- MOVE case: `parent.insertBefore(nodeMap.get(patch._ref), parent.childNodes[patch.to])`
+
+주의: MOVE는 기존 5개 패치 타입(ADD/REMOVE/REPLACE/PROPS_UPDATE/TEXT_UPDATE)에
+추가하는 것이므로 기존 동작에 영향 없어야 한다.
+
+
+---
+## Phase 2: main.js 통합
+---
+
+main.js에서 변경할 부분:
+
+### 2-1. import 교체
+
+```js
+// 기존
+import { diff } from "./src/diff.js";
+import { vdomToDom, domToVdom, cloneVdom } from "./src/vdom.js";
+
+// 변경
+import { diffKeyed as diff } from "./src/optimized/index.js";
+import { vdomToDomMapped } from "./src/optimized/vdom-mapped.js";
+import { domToVdom, cloneVdom } from "./src/vdom.js";  // 이 둘은 그대로
+```
+
+### 2-2. nodeMap 전역 변수 추가
+
+기존 상태 변수 근처 (line 25-30 부근)에 추가:
+```js
+let nodeMap = new WeakMap();
+```
+
+### 2-3. vdomToDom 호출부 교체 (2곳)
+
+- line 181: `const root = vdomToDom(cloneVdom(vdom));`
+  → `const root = vdomToDomMapped(cloneVdom(vdom), nodeMap);`
+- line 548: `return vdomToDom(cloneVdom(currentVDOM));`
+  → `return vdomToDomMapped(cloneVdom(currentVDOM), nodeMap);`
+
+주의: 여기서 cloneVdom 후 vdomToDomMapped를 쓰면 새 객체로 nodeMap이 재구축된다.
+이것이 cloneVdom 문제의 해결 방법이다 — clone 후에는 반드시 Mapped 버전으로 렌더하여
+nodeMap을 새로 채운다.
+
+### 2-4. diff 호출부 (2곳) — 자동 적용
+
+import에서 `diffKeyed as diff`로 alias했으므로 호출부 수정 불필요:
+- line 696: `pendingPatches = diff(currentVDOM, validation.vdom);` ← 그대로
+- line 778: `const patches = diff(currentVDOM, nextVdom);` ← 그대로
+
+### 2-5. cloneVdom 후 nodeMap 재구축 전략
+
+cloneVdom은 JSON.parse(JSON.stringify())를 사용하므로 WeakMap 키가 끊긴다.
+
+규칙: cloneVdom으로 새 vdom을 currentVDOM에 저장한 후,
+다음 렌더 시 vdomToDomMapped가 호출되면 nodeMap이 자동 재구축된다.
+
+따라서 cloneVdom 13곳 자체는 수정 불필요.
+단, nodeMap을 초기화하는 시점을 명확히 해야 한다:
+
+```js
+// undo/redo 시 (line 844, 864)
+currentVDOM = cloneVdom(history[historyIndex]);
+nodeMap = new WeakMap();  // ← 추가: 다음 렌더에서 재구축됨
+
+// reset 시 (line 877-879, 908-910)
+history = [cloneVdom(initialVDOM)];
+currentVDOM = cloneVdom(initialVDOM);
+nodeMap = new WeakMap();  // ← 추가
+```
+
+핵심: nodeMap 초기화 후 iframe에 render-snapshot을 보내면,
+iframe이 자체적으로 vdomToDomMapped를 실행하여 자기 nodeMap을 구축한다.
+
+
+---
+## Phase 3: iframe 통합
+---
+
+### 3-1. actual-site/app.js 수정
+
+```js
+// 기존 import
+import { applyPatches, getNodeByPath } from "../src/patch.js";
+import { vdomToDom } from "../src/vdom.js";
+
+// 변경 import
+import { applyPatchesMapped } from "../src/optimized/patch-mapped.js";
+import { vdomToDomMapped } from "../src/optimized/vdom-mapped.js";
+import { getNodeByPath } from "../src/patch.js";  // highlight용 유지
+```
+
+내부 변경:
+- 모듈 스코프에 `let nodeMap = new WeakMap();` 추가
+- line 91: `rootNode = vdomToDom(vdom)` → `nodeMap = new WeakMap(); rootNode = vdomToDomMapped(vdom, nodeMap)`
+- line 104: `rootNode = applyPatches(rootNode, patches)` → `rootNode = applyPatchesMapped(rootNode, patches, nodeMap)`
+
+getNodeByPath (line 23)는 하이라이트 전용이므로 그대로 유지 가능.
+성능이 문제되면 나중에 nodeMap 기반으로 교체.
+
+BroadcastChannel 메시지 핸들러:
+- "render-snapshot" 수신 시: vdom 데이터는 직렬화된 순수 객체.
+  vdomToDomMapped로 렌더하면서 iframe 자체 nodeMap 구축. _ref 불필요.
+- "apply-patches" 수신 시: patches도 직렬화됨. _ref/_parentRef 소멸.
+
+⚠️ 핵심 문제: BroadcastChannel로 전달된 patches에는 _ref가 없다.
+해결 방법 2가지 중 선택:
+
+A) iframe에서 자체 diff 수행:
+   - render-snapshot에서 oldVdom을 보관
+   - apply-patches 대신 newVdom을 받아서 iframe 내부에서 diffKeyed + applyPatchesMapped
+   - BroadcastChannel 메시지 포맷 변경 필요
+
+B) iframe에서는 기존 applyPatches 유지:
+   - 초기 렌더만 vdomToDomMapped 사용
+   - 증분 패치는 기존 getNodeByPath 방식 유지
+   - 하이브리드 접근. 구현 간단하지만 최적화 효과 제한적
+
+추천: 현실적으로 B를 먼저 적용하고, 성능 이슈가 확인되면 A로 전환.
+
+
+### 3-2. preview-site/app.js 수정
+
+preview-site는 applyPatches를 사용하지 않는다 (전체 렌더만 수행).
+
+```js
+// 기존
+import { vdomToDom } from "../src/vdom.js";
+
+// 변경
+import { vdomToDomMapped } from "../src/optimized/vdom-mapped.js";
+```
+
+- 모듈 스코프에 `let nodeMap = new WeakMap();` 추가
+- line 100: `rootNode = vdomToDom(vdom)` → `nodeMap = new WeakMap(); rootNode = vdomToDomMapped(vdom, nodeMap)`
+
+preview-site는 항상 전체 렌더이므로 nodeMap 갱신 문제 없음.
+getNodeByPath (line 32)는 하이라이트 전용이므로 그대로 유지.
+
+
+---
+## Phase 4: 벤치마크 파라미터 조절 UI
+---
+
+벤치마크 팝업에서 시나리오별 조건(전체 항목 수, 변경 항목 수 등)을
+사용자가 직접 조정할 수 있는 UI를 추가한다.
+
+### 4-1. 시나리오별 조절 가능 파라미터
+
+| 시나리오 | 파라미터 1 | 파라미터 2 |
+|----------|-----------|-----------|
+| S1 대량 수정 | 전체 항목 수 (기본 3000) | 변경 비율 % (기본 5) |
+| S2 중간 삽입 | 전체 항목 수 (기본 1000) | 삽입 항목 수 (기본 100) |
+| S3 속성 토글 | 전체 요소 수 (기본 1000) | — |
+| S4 트리 리프 | 트리 깊이 (기본 6) | 분기 수 (기본 4) |
+
+### 4-2. UI 구현 방식 — 숫자 입력 필드
+
+슬라이더가 아닌 `<input type="number">` 사용. 이유:
+- 정확한 값 입력 가능 (10000 같은 극단값 테스트)
+- 팝업 공간 절약 (슬라이더 × 시나리오 수 = 너무 많음)
+- 구현이 간단
+
+### 4-3. 노드 폭발 방지 — 총 노드 수 제한
+
+S4(트리 리프)는 breadth^depth 개의 노드를 생성한다.
+사용자가 depth=10, breadth=6을 입력하면 6^10 ≈ 6천만 노드 → 브라우저 멈춤.
+
+반드시 아래 안전장치를 구현해야 한다:
+
+1) 총 노드 수 사전 계산 함수:
+```js
+function estimateNodeCount(depth, breadth) {
+  // breadth^0 + breadth^1 + ... + breadth^depth = (breadth^(depth+1) - 1) / (breadth - 1)
+  if (breadth <= 1) return depth + 1;
+  return Math.floor((Math.pow(breadth, depth + 1) - 1) / (breadth - 1));
+}
+```
+
+2) 노드 상한: 100,000개.
+   파라미터 입력값이 변경될 때마다 예상 노드 수를 계산하여 표시.
+   상한 초과 시:
+   - 입력 필드에 경고 스타일 (빨간 테두리)
+   - 실행 버튼 비활성화
+   - "예상 노드 수: 1,234,567 (상한 100,000 초과)" 메시지 표시
+
+3) S4 외 시나리오(S1, S2, S3)는 단순 리스트이므로 max 값(50,000)으로 충분.
+   추가 계산 불필요.
+
+4) S2 삽입 항목 수 검증: insertCount가 count보다 클 수 없음.
+   입력 시 자동으로 min(insertCount, count) 적용.
+
+구현 위치:
+- 노드 수 계산: scenarios.js에 estimateNodeCount 함수 또는 각 시나리오에 estimate 콜백
+- 검증 + 경고 UI: benchmark-popup.js의 파라미터 input 이벤트 핸들러
+
+
+### 4-4. scenarios.js 수정
+
+시나리오 객체에 `params` 배열을 추가한다:
+
+```js
+{
+  id: "bulk-update",
+  name: "대량 수정",
+  icon: "📝",
+  params: [
+    { key: "count", label: "항목 수", default: 3000, min: 100, max: 50000, step: 100 },
+    { key: "changeRatio", label: "변경 비율(%)", default: 5, min: 1, max: 100, step: 1 },
+  ],
+  generateInitial: ({ count }) => bulkUpdateInitial(count),
+  generateModified: ({ count, changeRatio }) => bulkUpdateModified(count, changeRatio / 100),
+},
+{
+  id: "deep-tree",
+  name: "트리 리프",
+  icon: "🌳",
+  params: [
+    { key: "depth", label: "깊이", default: 6, min: 2, max: 10, step: 1 },
+    { key: "breadth", label: "분기 수", default: 4, min: 2, max: 6, step: 1 },
+  ],
+  // 노드 수 추정 (검증용)
+  estimateNodes: ({ depth, breadth }) => estimateNodeCount(depth, breadth),
+  generateInitial: ({ depth, breadth }) => deepTreeInitial(depth, breadth),
+  generateModified: ({ depth, breadth }) => deepTreeModified(depth, breadth),
+}
+```
+
+generateInitial, generateModified의 시그니처를 변경:
+- 기존: `() => bulkUpdateInitial(3000)` (인자 없음)
+- 변경: `(params) => bulkUpdateInitial(params.count)` (params 객체 수신)
+
+이 변경은 scenarios.js + benchmark-popup.js 내부에서만 발생한다.
+
+### 4-5. benchmark-popup.js 수정
+
+#### 파라미터 입력 영역 추가
+
+시나리오 버튼 아래, 실행 영역 위에 파라미터 입력 필드를 동적 생성한다.
+시나리오 전환 시 해당 시나리오의 params 배열을 읽어 입력 필드를 갱신한다.
+
+```html
+<!-- 동적 생성되는 구조 예시 -->
+<div class="bench-params">
+  <label class="bench-param">
+    <span class="bench-param__label">항목 수</span>
+    <input type="number" class="bench-param__input" value="3000" min="100" max="50000" step="100">
+  </label>
+  <label class="bench-param">
+    <span class="bench-param__label">변경 비율(%)</span>
+    <input type="number" class="bench-param__input" value="5" min="1" max="100" step="1">
+  </label>
+</div>
+```
+
+#### 파라미터 읽기
+
+실행 시 현재 입력값을 params 객체로 수집하여 generate 함수에 전달:
+
+```js
+function getCurrentParams() {
+  const params = {};
+  container.querySelectorAll(".bench-param__input").forEach((input) => {
+    params[input.dataset.key] = Number(input.value);
+  });
+  return params;
+}
+
+// 실행 시
+const params = getCurrentParams();
+const initialVdom = currentScenario.generateInitial(params);
+const modifiedVdom = currentScenario.generateModified(params);
+```
+
+#### selectScenario 함수 수정
+
+시나리오 전환 시 파라미터 입력 영역을 재생성:
+
+```js
+function selectScenario(id) {
+  // ... 기존 로직 ...
+  renderParamInputs(scenario.params);  // 파라미터 UI 갱신
+}
+```
+
+### 4-6. benchmark-popup.css 추가 스타일
+
+```css
+.bench-params {
+  display: flex;
+  gap: 16px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.bench-param {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.bench-param__input {
+  width: 80px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 노드 상한 초과 시 경고 */
+.bench-param__input.is-over-limit {
+  border-color: #ff4444;
+  background: rgba(255, 0, 0, 0.1);
+}
+
+.bench-params__warning {
+  width: 100%;
+  padding: 4px 0;
+  font-size: 11px;
+  color: #ff6666;
+}
+```
+
+### 4-7. 수정 파일 (Phase 4 한정)
+
+| 파일 | 수정 내용 |
+|------|----------|
+| src/benchmark/scenarios.js | params 배열 추가, generate 함수 시그니처 변경 |
+| src/benchmark/benchmark-popup.js | 파라미터 UI 동적 생성, getCurrentParams(), selectScenario 수정 |
+| src/benchmark/benchmark-popup.css | .bench-params, .bench-param, .bench-param__input 스타일 추가 |
+
+이 Phase는 Phase 1~3과 수정 파일이 겹치지 않으므로 병렬 작업 가능하다.
+
+
+---
+## 검증 체크리스트
+---
+
+1. 벤치마크 팝업: 4개 시나리오 양쪽 동시 실행 2회 연속 정상 동작
+2. 메인 에디터: HTML 입력 → actual/preview iframe 정상 렌더링
+3. 패치 버튼: 변경사항 증분 적용 정상 동작
+4. Undo/Redo: 히스토리 이동 후 다음 편집 정상 동작
+5. Reset: 초기화 후 정상 동작
+6. data-key 속성이 있는 HTML 입력 시 key 기반 diff 적용 확인
+7. key 속성이 DOM에 출력되지 않는지 확인 (data-key는 출력돼야 함)
+8. CONTRACT.md의 함수 시그니처가 변경되지 않았는지 확인
+9. src/vdom.js, src/diff.js, src/patch.js 원본 파일 무수정 확인
+10. 벤치마크 파라미터 조절: 숫자 변경 후 실행 시 해당 조건으로 벤치마크 수행 확인
+11. 벤치마크 시나리오 전환 시 파라미터 입력 필드가 해당 시나리오에 맞게 변경 확인
+12. 극단값 테스트: 항목 수 50000 입력 후 실행 시 브라우저 멈춤 없이 완료 (시간 증가는 OK)
+
+
+---
+## 수정 파일 요약
+---
+
+| 파일 | Phase | 수정 내용 |
+|------|-------|----------|
+| src/optimized/patch-mapped.js | 1 | import 교체 + ADD/REPLACE에서 vdomToDomMapped 사용 + MOVE case 추가 |
+| src/optimized/diff-keyed.js | 1 | getKey 폴백 + MOVE 패치 생성 (LIS) |
+| main.js | 2 | import 교체 + nodeMap 변수 + vdomToDom→Mapped 2곳 + undo/redo/reset 시 nodeMap 초기화 4곳 |
+| actual-site/app.js | 3 | import 교체 + nodeMap 변수 + 초기렌더 Mapped + applyPatches 교체 또는 유지 |
+| preview-site/app.js | 3 | import 교체 + nodeMap 변수 + 초기렌더 Mapped |
+| src/benchmark/scenarios.js | 4 | params 배열 추가, generate 함수 시그니처 변경 (params 객체 수신) |
+| src/benchmark/benchmark-popup.js | 4 | 파라미터 UI 동적 생성, getCurrentParams(), selectScenario 수정 |
+| src/benchmark/benchmark-popup.css | 4 | .bench-params 관련 스타일 추가 |

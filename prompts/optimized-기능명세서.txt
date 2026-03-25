@@ -1,0 +1,323 @@
+# VDOM 최적화 엔진 — 기능 명세서
+
+버전: 1.0
+작성일: 2026-03-25
+상태: 설계 완료, 구현 대기
+
+
+## 1. 개요
+
+### 1-1. 목적
+기존 index 기반 diff + getNodeByPath O(n) patch를 
+key 기반 diff + WeakMap O(1) patch로 교체하여 성능을 개선한다.
+
+### 1-2. 범위
+- 벤치마크 팝업 (src/benchmark/) — 이미 적용 완료
+- 메인 에디터 (main.js) — Phase 2
+- iframe 렌더러 (actual-site, preview-site) — Phase 3
+
+### 1-3. 제약 조건
+- 팀 계약 파일 (src/vdom.js, src/diff.js, src/patch.js) 수정 금지
+- CONTRACT.md의 함수 시그니처 유지
+- VDOM 스키마 변경 없음
+- 원본 모듈은 제거하지 않음 (폴백/교육 목적 보존)
+
+### 1-4. 핵심 설계 원칙
+**nodeMap은 캐시다.** 영속 상태 저장소가 아니다.
+- source of truth: currentVDOM + 실제 DOM
+- nodeMap: 현재 렌더 트리에 종속된 O(1) 조회용 캐시
+- 렌더 트리가 교체되는 시점(cloneVdom/undo/redo/reset/iframe snapshot)에서는
+  반드시 폐기(new WeakMap()) 후 vdomToDomMapped로 재구축
+- nodeMap에 데이터를 저장하거나 복원 용도로 사용하지 않는다
+
+
+## 2. 기존 아키텍처
+
+### 2-1. diff (src/diff.js)
+- 자식 노드를 index 순서로 1:1 비교
+- 중간 삽입 시 해당 위치 이후 모든 노드가 "변경됨"으로 판정
+- 예: 1000개 리스트 중간에 50개 삽입 → 약 550개 패치 생성
+
+### 2-2. patch (src/patch.js)
+- getNodeByPath(root, [1, 3, 2]): root에서 path 배열을 따라 자식 탐색
+- getMeaningfulChildNodes: 매 호출마다 childNodes를 필터링하여 새 배열 생성
+- n개 패치 × 평균 m개 자식 = O(n×m) 총 비용
+
+### 2-3. 패치 타입 (5종)
+| 타입 | 설명 |
+|------|------|
+| ADD | 부모 path + index 위치에 노드 추가 |
+| REMOVE | 대상 path의 노드 제거 |
+| REPLACE | 대상 path의 노드 교체 |
+| PROPS_UPDATE | 대상 path의 속성 변경 (setProps, removeProps) |
+| TEXT_UPDATE | 대상 path의 텍스트 변경 |
+
+
+## 3. 최적화 아키텍처
+
+### 3-1. key 기반 diff (diff-keyed.js)
+
+#### 알고리즘
+1. old 자식을 key → {index, node} Map으로 분류
+2. new 자식을 순회하며 key로 old에서 매칭
+3. 매칭된 쌍: 재귀 diff (기존과 동일)
+4. 매칭 안 된 new: ADD 패치 생성
+5. 매칭 안 된 old: REMOVE 패치 생성
+6. 위치가 달라진 매칭: MOVE 패치 생성 (LIS 기반 최소 이동)
+
+#### key 결정 규칙
+```
+우선순위: props.key > props["data-key"] > null (index 폴백)
+```
+- 코드에서 직접 생성한 VDOM: props.key 사용
+- HTML에서 domToVdom로 변환: data-key 어트리뷰트 → props["data-key"]
+- key가 없는 자식: 기존 index 기반 비교로 폴백
+
+#### _ref 직접 참조
+모든 패치에 추가 필드 첨부:
+- `_ref`: 대상이 되는 old vdom 노드 객체 참조 (REMOVE, REPLACE, PROPS_UPDATE, TEXT_UPDATE, MOVE)
+- `_parentRef`: 부모 old vdom 노드 객체 참조 (ADD)
+
+이 참조는 WeakMap의 키로 사용되어 O(1) DOM 조회를 가능하게 한다.
+
+### 3-2. WeakMap O(1) patch (patch-mapped.js)
+
+#### nodeMap 구조
+```
+WeakMap<vdomNode, domNode>
+```
+- vdomToDomMapped()가 DOM 생성 시 자동으로 모든 노드를 등록
+- 패치 적용 시 patch._ref로 nodeMap에서 대상 DOM을 O(1) 조회
+
+#### 패치 적용 흐름
+```
+patch._ref (vdom 객체) → nodeMap.get(_ref) → DOM 노드 → DOM 조작
+```
+
+getNodeByPath의 매 호출마다 트리 탐색을 반복하는 대신,
+사전에 구축된 Map에서 바로 꺼내므로 O(1).
+
+#### nodeMap 갱신 규칙
+| 패치 타입 | nodeMap 동작 |
+|-----------|-------------|
+| ADD | vdomToDomMapped로 생성 → 새 노드 자동 등록 |
+| REMOVE | WeakMap이므로 GC가 자동 정리 (명시적 delete 선택적) |
+| REPLACE | 새 노드는 vdomToDomMapped로 등록, 구 노드는 GC |
+| MOVE | 기존 매핑 유지 (DOM 노드 동일, 위치만 변경) |
+| PROPS_UPDATE | 매핑 유지 (동일 DOM 노드의 속성만 변경) |
+| TEXT_UPDATE | 매핑 유지 (동일 텍스트 노드의 내용만 변경) |
+
+### 3-3. MOVE 패치 (신규)
+
+#### 패치 포맷
+```js
+{
+  type: "MOVE",
+  path: [...],        // 부모의 path
+  from: 3,            // 현재 위치 (old 기준)
+  to: 1,              // 목표 위치 (new 기준)
+  _ref: oldChildNode, // 이동할 노드의 old vdom 참조
+  _parentRef: parentNode // 부모의 old vdom 참조
+}
+```
+
+#### 적용 방식
+```js
+const child = nodeMap.get(patch._ref);
+const parent = nodeMap.get(patch._parentRef);
+const ref = parent.childNodes[patch.to] ?? null;
+parent.insertBefore(child, ref);
+```
+
+#### LIS 최적화
+key 매칭 후 old index 시퀀스에서 LIS를 구해
+LIS에 포함되지 않는 노드만 MOVE 대상으로 지정.
+이렇게 하면 최소 DOM 이동 횟수를 보장한다.
+
+
+## 4. nodeMap 생명주기
+
+### 4-1. 생성
+```
+vdomToDomMapped(vdom, nodeMap) 호출 시
+  → 모든 vdom 노드에 대해 nodeMap.set(vnode, domNode)
+```
+
+### 4-2. 유지
+- diff + patch 사이클에서 자동 갱신
+- ADD/REPLACE: vdomToDomMapped가 새 노드 등록
+- REMOVE: GC가 자동 정리
+- 나머지: 기존 매핑 유지
+
+### 4-3. 파기 + 재생성
+아래 상황에서 nodeMap을 새로 생성하고 전체 재렌더:
+- Undo/Redo 시 (cloneVdom → 새 객체 → 기존 Map 무효)
+- Reset 시
+- iframe render-snapshot 수신 시 (직렬화로 참조 소멸)
+
+```js
+nodeMap = new WeakMap();
+rootNode = vdomToDomMapped(vdom, nodeMap);
+```
+
+### 4-4. WeakMap 선택 이유
+- vdom 객체가 GC되면 매핑도 자동 삭제 → 메모리 누수 없음
+- 명시적 정리 코드 불필요
+- 단점: 직렬화 불가 (BroadcastChannel 통과 불가)
+
+
+## 5. BroadcastChannel 직렬화 대응
+
+### 5-1. 문제
+main.js → iframe 통신은 BroadcastChannel (postMessage)을 사용.
+postMessage는 structured clone algorithm으로 데이터를 직렬화.
+_ref, _parentRef (객체 참조)는 직렬화 시 소멸.
+
+### 5-2. 해결 전략
+
+#### render-snapshot (전체 렌더)
+- iframe이 vdom 데이터를 수신하면 자체 nodeMap으로 vdomToDomMapped 실행
+- _ref 불필요. iframe 자체의 vdom→DOM 매핑 구축
+
+#### apply-patches (증분 패치)
+두 가지 선택지:
+
+**방법 A — iframe 자체 diff (권장, 완전 최적화):**
+- main.js가 patches 대신 newVdom을 전송
+- iframe이 보관 중인 oldVdom과 newVdom으로 자체 diffKeyed 수행
+- 자체 nodeMap으로 applyPatchesMapped 적용
+- 메시지 포맷 변경 필요
+
+**방법 B — 하이브리드 (간단, 부분 최적화):**
+- 초기 렌더만 vdomToDomMapped 사용
+- 증분 패치는 기존 applyPatches(path 기반) 유지
+- import를 섞어서 사용
+- 구현 간단하지만 증분 패치 성능은 기존과 동일
+
+
+## 6. 성능 비교 예상
+
+### S1: 대량 수정 (3000항목 중 5% 텍스트 변경)
+| | 기존 | 최적화 |
+|--|------|--------|
+| diff | O(n) index 비교 | O(n) key 비교 (동등) |
+| patch | 150 × getNodeByPath O(n) = O(n²) | 150 × WeakMap O(1) = O(n) |
+
+### S2: 중간 삽입 (1000항목 리스트에 50개 중간 삽입)
+| | 기존 | 최적화 |
+|--|------|--------|
+| diff | ~550 패치 (cascading) | ~50 ADD 패치 (key 매칭) |
+| patch | 550 × O(n) | 50 × O(1) |
+
+### S3: 속성 토글 (1000 div의 class 일괄 변경)
+| | 기존 | 최적화 |
+|--|------|--------|
+| diff | O(n) (동등) | O(n) (동등) |
+| patch | 1000 × O(n) = O(n²) | 1000 × O(1) = O(n) |
+
+### S4: 깊은 트리 (depth 6, breadth 4)
+| | 기존 | 최적화 |
+|--|------|--------|
+| patch | 각 패치마다 depth만큼 탐색 | O(1) |
+
+
+## 7. 모듈 구조
+
+```
+src/
+├── vdom.js              ← 원본 유지 (계약)
+├── diff.js              ← 원본 유지 (계약)
+├── patch.js             ← 원본 유지 (계약)
+├── optimized/
+│   ├── index.js         ← 단일 진입점 (re-export)
+│   ├── diff-keyed.js    ← key diff + _ref + MOVE
+│   ├── patch-mapped.js  ← WeakMap patch + MOVE 처리
+│   └── vdom-mapped.js   ← vdomToDom + WeakMap 빌드
+└── benchmark/
+    ├── scenarios.js     ← 벤치마크 시나리오 (이미 적용)
+    ├── benchmark-popup.js
+    └── benchmark-popup.css
+```
+
+제거 방법: `src/optimized/` 폴더 삭제 + import 경로 원복
+
+
+## 8. 구현 단계
+
+### Phase 1 — optimized 내부 수정 (영향 범위: 0)
+- patch-mapped.js 렌더 경로 통일
+- diff-keyed.js key 폴백 규칙
+- MOVE 패치 타입 추가
+- 기존 파일 무수정, 벤치마크에서만 영향
+
+### Phase 2 — main.js 통합 (영향 범위: main.js 1개)
+- import 교체 (diff → diffKeyed, vdomToDom → vdomToDomMapped)
+- nodeMap 변수 추가 + 생명주기 관리
+- undo/redo/reset 시 nodeMap 초기화
+
+### Phase 3 — iframe 통합 (영향 범위: app.js × 2)
+- actual-site: 초기렌더 Mapped + 패치 전략 결정 (A or B)
+- preview-site: 초기렌더 Mapped (패치 미사용이므로 간단)
+- 각 iframe이 독립 nodeMap 관리
+
+### Phase 4 — 벤치마크 파라미터 조절 UI (영향 범위: benchmark/ 3개)
+- 시나리오별 조절 가능 파라미터를 숫자 입력 필드로 노출
+- Phase 1~3과 수정 파일 겹치지 않으므로 병렬 작업 가능
+
+
+## 8-1. 벤치마크 파라미터 조절 상세
+
+### 시나리오별 조절 파라미터
+
+| 시나리오 | 파라미터 | 기본값 | 범위 |
+|----------|---------|--------|------|
+| S1 대량 수정 | 전체 항목 수 | 3000 | 100 ~ 50000 |
+| S1 대량 수정 | 변경 비율 (%) | 5 | 1 ~ 100 |
+| S2 중간 삽입 | 전체 항목 수 | 1000 | 100 ~ 50000 |
+| S2 중간 삽입 | 삽입 항목 수 | 100 | 10 ~ 5000 |
+| S3 속성 토글 | 전체 요소 수 | 1000 | 100 ~ 50000 |
+| S4 트리 리프 | 트리 깊이 | 6 | 2 ~ 10 |
+| S4 트리 리프 | 분기 수 | 4 | 2 ~ 6 |
+
+주의: S4는 depth=10, breadth=6이면 6^10 ≈ 6천만 노드.
+UI에서 max를 제한하거나, 총 노드 수 경고를 표시해야 한다.
+
+### UI 방식: 숫자 입력 (`<input type="number">`)
+
+선택 이유:
+- 정확한 값 입력 가능 (성능 변곡점 탐색 시 유용)
+- 극단값 테스트 용이 (50000개 등)
+- 팝업 내 공간 효율적 (슬라이더 대비 좁은 면적)
+- 구현 간단
+
+### 동작 흐름
+
+1. 시나리오 선택 → 해당 params 배열 읽어서 입력 필드 동적 생성
+2. 사용자가 값 조절
+3. 실행 버튼 클릭 → 현재 입력값 수집 → generate 함수에 전달
+4. 시나리오 전환 시 입력 필드가 새 시나리오에 맞게 교체됨
+
+### 인터페이스 변경
+
+scenarios.js의 시나리오 객체에 `params` 배열 추가:
+
+```js
+params: [
+  { key: "count", label: "항목 수", default: 3000, min: 100, max: 50000, step: 100 },
+]
+```
+
+generate 함수 시그니처 변경:
+- 기존: `generateInitial: () => fn()`
+- 변경: `generateInitial: (params) => fn(params.count)`
+
+
+## 9. 위험 요소 및 대응
+
+| 위험 | 영향 | 대응 |
+|------|------|------|
+| cloneVdom 후 nodeMap 무효 | undo/redo 실패 | nodeMap 초기화 + 전체 재렌더 |
+| BroadcastChannel _ref 소멸 | iframe 패치 실패 | iframe 자체 diff 또는 하이브리드 |
+| MOVE 패치 순서 오류 | 리스트 렌더링 깨짐 | LIS 알고리즘으로 안전한 이동 순서 보장 |
+| key 없는 기존 HTML | key diff 미적용 | index 폴백 자동 적용 (기존과 동일 동작) |
+| 팀원 동시 작업 충돌 | merge conflict | Phase별 분리 + 영향 파일 최소화 |
