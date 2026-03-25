@@ -631,7 +631,7 @@ const sceneDefinitions = [
   },
 ];
 
-export const scenarios = sceneDefinitions.map((scene) => ({
+const sceneScenarios = sceneDefinitions.map((scene) => ({
   id: scene.id,
   name: scene.name,
   icon: scene.icon,
@@ -647,3 +647,165 @@ export const scenarios = sceneDefinitions.map((scene) => ({
   },
   prepare: (options) => prepareScenarioRun(scene, getDensity(options?.density)),
 }));
+
+function makeLi(textValue, key) {
+  const props = key != null ? { key: String(key) } : {};
+
+  return {
+    type: "li",
+    props,
+    children: [{ type: "#text", text: textValue }],
+  };
+}
+
+function bulkUpdateInitial(count = 1000) {
+  const children = [];
+  for (let index = 0; index < count; index += 1) {
+    children.push(makeLi(`Item ${index}`, index));
+  }
+  return { type: "ul", props: { class: "bench-list" }, children };
+}
+
+function bulkUpdateModified(count = 1000, changeRatio = 0.1) {
+  const children = [];
+  const changeEvery = Math.max(1, Math.floor(1 / changeRatio));
+
+  for (let index = 0; index < count; index += 1) {
+    const label = index % changeEvery === 0 ? `Updated-Item ${index} ✓` : `Item ${index}`;
+    children.push(makeLi(label, index));
+  }
+
+  return { type: "ul", props: { class: "bench-list" }, children };
+}
+
+function middleInsertInitial(count = 500) {
+  const children = [];
+  for (let index = 0; index < count; index += 1) {
+    children.push(makeLi(`Row ${index}`, `row-${index}`));
+  }
+  return { type: "ul", props: { class: "bench-list" }, children };
+}
+
+function middleInsertModified(count = 500, insertCount = 50) {
+  const mid = Math.floor(count / 2);
+  const children = [];
+
+  for (let index = 0; index < mid; index += 1) {
+    children.push(makeLi(`Row ${index}`, `row-${index}`));
+  }
+
+  for (let index = 0; index < insertCount; index += 1) {
+    children.push(makeLi(`New-${index} ★`, `new-${index}`));
+  }
+
+  for (let index = mid; index < count; index += 1) {
+    children.push(makeLi(`Row ${index}`, `row-${index}`));
+  }
+
+  return { type: "ul", props: { class: "bench-list" }, children };
+}
+
+function partialDeleteInitial(count = 1000) {
+  const children = [];
+  for (let index = 0; index < count; index += 1) {
+    children.push(makeLi(`Row ${index}`, `row-${index}`));
+  }
+  return { type: "ul", props: { class: "bench-list" }, children };
+}
+
+function partialDeleteModified(count = 1000, deleteRatio = 0.2) {
+  const deleteCount = Math.floor(count * deleteRatio);
+  const start = Math.floor((count - deleteCount) / 2);
+  const children = [];
+
+  for (let index = 0; index < count; index += 1) {
+    if (index >= start && index < start + deleteCount) {
+      continue;
+    }
+    children.push(makeLi(`Row ${index}`, `row-${index}`));
+  }
+
+  return { type: "ul", props: { class: "bench-list" }, children };
+}
+
+function countVdomNodes(vnode) {
+  if (!vnode) return 0;
+  if (vnode.type === "#text") return 1;
+  return 1 + (vnode.children ?? []).reduce((sum, child) => sum + countVdomNodes(child), 0);
+}
+
+function makeClassicPacket(label, description, modifiedVdom) {
+  return {
+    label,
+    description,
+    receivedAt: new Date().toLocaleTimeString("ko-KR"),
+    batchId: `CLASSIC-${String(Math.floor(Math.random() * 900) + 100)}`,
+    changeCountText: `노드 ${countVdomNodes(modifiedVdom)}개`,
+    focusAfter: "수치 측정",
+  };
+}
+
+function wrapClassicScenario({ id, name, icon, description, params, buildInitial, buildModified }) {
+  return {
+    id,
+    name,
+    icon,
+    description,
+    hasCustomParams: true,
+    params,
+    prepare(options) {
+      const paramValues = options?.customParams ?? {};
+      const resolvedParams = {};
+
+      for (const param of params) {
+        resolvedParams[param.key] = paramValues[param.key] ?? param.default;
+      }
+
+      const initialVdom = buildInitial(resolvedParams);
+      const modifiedVdom = buildModified(resolvedParams);
+      const packet = makeClassicPacket(name, description, modifiedVdom);
+      return { initialVdom, modifiedVdom, packet };
+    },
+  };
+}
+
+const classicScenarios = [
+  wrapClassicScenario({
+    id: "bulk-update",
+    name: "대량 수정",
+    icon: "📝",
+    description: "리스트 중 일부만 텍스트 변경",
+    params: [
+      { key: "count", label: "항목 수", default: 3000, min: 100, max: 10000, step: 100 },
+      { key: "changeRatio", label: "변경 비율(%)", default: 5, min: 1, max: 100, step: 1 },
+    ],
+    buildInitial: ({ count }) => bulkUpdateInitial(count),
+    buildModified: ({ count, changeRatio }) => bulkUpdateModified(count, changeRatio / 100),
+  }),
+  wrapClassicScenario({
+    id: "middle-insert",
+    name: "중간 삽입",
+    icon: "➕",
+    description: "리스트 중간에 항목 삽입",
+    params: [
+      { key: "count", label: "전체 항목 수", default: 1000, min: 100, max: 10000, step: 100 },
+      { key: "insertCount", label: "삽입 항목 수", default: 100, min: 10, max: 2000, step: 10 },
+    ],
+    buildInitial: ({ count }) => middleInsertInitial(count),
+    buildModified: ({ count, insertCount }) => middleInsertModified(count, Math.min(insertCount, count)),
+  }),
+  wrapClassicScenario({
+    id: "partial-delete",
+    name: "부분 삭제",
+    icon: "🗑️",
+    description: "리스트 중간 영역을 일괄 삭제",
+    params: [
+      { key: "count", label: "전체 항목 수", default: 1000, min: 100, max: 10000, step: 100 },
+      { key: "deleteRatio", label: "삭제 비율(%)", default: 20, min: 1, max: 90, step: 1 },
+    ],
+    buildInitial: ({ count }) => partialDeleteInitial(count),
+    buildModified: ({ count, deleteRatio }) => partialDeleteModified(count, deleteRatio / 100),
+  }),
+];
+
+export const scenarios = [...sceneScenarios, ...classicScenarios];

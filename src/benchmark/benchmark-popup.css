@@ -217,6 +217,95 @@
   cursor: not-allowed;
 }
 
+/* ── 커스텀 파라미터 슬라이더 (기존 시나리오용) ── */
+
+.bench-custom-params {
+  display: none;
+}
+
+.bench-custom-params.has-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 12px 18px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(9, 14, 22, 0.72);
+}
+
+.bench-param {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto;
+  gap: 6px 12px;
+  min-width: 200px;
+  flex: 1 1 240px;
+}
+
+.bench-param__label {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #9bb0c4;
+  white-space: nowrap;
+}
+
+.bench-param__value {
+  grid-column: 2;
+  grid-row: 1;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #eef4fb;
+  min-width: 52px;
+}
+
+.bench-param__input {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: 100%;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  outline: none;
+  cursor: pointer;
+}
+
+.bench-param__input::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(133, 195, 218, 0.6);
+  background: linear-gradient(135deg, #528a9c, #3a6e82);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.bench-param__input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  border-color: rgba(199, 235, 255, 0.8);
+}
+
+.bench-param__input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(133, 195, 218, 0.6);
+  background: linear-gradient(135deg, #528a9c, #3a6e82);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.bench-param__input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .bench-guidance {
   display: grid;
   gap: 2px;
@@ -947,6 +1036,27 @@
 .bench-site__hero-badge--slate {
   color: #d4dfeb;
   background: rgba(119, 141, 163, 0.16);
+}
+
+/* ===== bench-list (bulk-update / middle-insert / partial-delete) ===== */
+
+.bench-browser__content .bench-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.bench-browser__content .bench-list li {
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2ecf5;
+  font-size: 11px;
+  font-family: Consolas, Monaco, monospace;
+  line-height: 1.4;
 }
 
 /* ===== 하이라이트 ===== */

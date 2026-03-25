@@ -205,6 +205,8 @@ function buildPopupDOM() {
 
           <button class="bench-refresh-btn" type="button" data-ref="refreshRunBtn">새 데이터 받기</button>
         </div>
+
+        <div class="bench-custom-params" data-ref="customParamsContainer"></div>
       </div>
 
       <div class="bench-guidance">
@@ -353,9 +355,20 @@ function renderInitialDOM(container, vnode) {
 }
 
 function getScenarioOptions() {
-  return {
+  const options = {
     density: refs.densitySelect.value,
   };
+
+  if (currentScenario?.hasCustomParams && refs.customParamsContainer) {
+    const customParams = {};
+    for (const param of currentScenario.params) {
+      const input = refs.customParamsContainer.querySelector(`[data-param="${param.key}"]`);
+      customParams[param.key] = input ? Number(input.value) : param.default;
+    }
+    options.customParams = customParams;
+  }
+
+  return options;
 }
 
 function buildScenarioTrees() {
@@ -396,6 +409,9 @@ function setControlsLocked(locked) {
   if (refs.domRunBtn) refs.domRunBtn.disabled = locked;
   if (refs.vdomRunBtn) refs.vdomRunBtn.disabled = locked;
   if (refs.runBothBtn) refs.runBothBtn.disabled = locked;
+  refs.customParamsContainer?.querySelectorAll(".bench-param__input").forEach((input) => {
+    input.disabled = locked;
+  });
 }
 
 function setMode(mode) {
@@ -622,6 +638,48 @@ function updateResultBar() {
     `<span class="comparison">→ ${faster}이 ${ratio}% 빠름</span>`;
 }
 
+function renderCustomParamsUI(scenario) {
+  const container = refs.customParamsContainer;
+  if (!container) return;
+
+  if (!scenario?.hasCustomParams || !scenario.params?.length) {
+    container.innerHTML = "";
+    container.classList.remove("has-params");
+    const densityLabel = overlayEl?.querySelector(".bench-density-select");
+    if (densityLabel) densityLabel.style.display = "";
+    return;
+  }
+
+  const densityLabel = overlayEl?.querySelector(".bench-density-select");
+  if (densityLabel) densityLabel.style.display = "none";
+
+  container.classList.add("has-params");
+  container.innerHTML = scenario.params
+    .map(
+      (param) => `
+      <label class="bench-param">
+        <span class="bench-param__label">${param.label}</span>
+        <input class="bench-param__input"
+               type="range"
+               data-param="${param.key}"
+               min="${param.min}" max="${param.max}" step="${param.step}" value="${param.default}" />
+        <span class="bench-param__value" data-param-display="${param.key}">${param.default}</span>
+      </label>`
+    )
+    .join("");
+
+  let paramDebounceTimer = null;
+  container.querySelectorAll(".bench-param__input").forEach((input) => {
+    input.addEventListener("input", () => {
+      const display = container.querySelector(`[data-param-display="${input.dataset.param}"]`);
+      if (display) display.textContent = input.value;
+      invalidatePreparedRun();
+      clearTimeout(paramDebounceTimer);
+      paramDebounceTimer = setTimeout(() => primeScenarioViews(true), 300);
+    });
+  });
+}
+
 function selectScenario(id) {
   const scenario = scenarios.find((candidate) => candidate.id === id);
   if (!scenario) return;
@@ -633,6 +691,7 @@ function selectScenario(id) {
     button.classList.toggle("is-active", button.dataset.scenario === id);
   });
 
+  renderCustomParamsUI(scenario);
   primeScenarioViews(true);
 }
 
