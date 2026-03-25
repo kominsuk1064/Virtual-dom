@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>처음 보는 사람도 이해하는 가상 DOM 놀이터</title>
+    <title>탐정 수사 보드 가상 DOM 데모</title>
     <link rel="stylesheet" href="./style.css" />
     <link rel="stylesheet" href="./src/benchmark/benchmark-popup.css" />
   </head>
@@ -11,64 +11,36 @@
     <div class="app-shell">
       <!-- MOD: 초심자 발표 기준으로 용어보다 이야기를 먼저 보여주는 도입부 -->
       <header class="hero panel panel--hero">
-        <p class="eyebrow">처음 보는 사람도 이해하는 가상 DOM 데모</p>
-        <h1>웹페이지는 왜<br />바뀐 부분만 고칠까?</h1>
-        <p class="subtitle">
-          왼쪽은 지금 실제 화면이고, 오른쪽은 곧 바뀔 후보 화면입니다. 컴퓨터는 두 화면을
-          비교해서 달라진 부분만 찾아낸 뒤, 실제 화면에 꼭 필요한 만큼만 반영합니다.
-        </p>
-
-        <div class="term-grid">
-          <article class="term-card">
-            <span class="term-card__label">가상 DOM</span>
-            <strong>비교용 설계도</strong>
-            <p>실제 화면을 바로 고치기 전에, JS 객체로 만든 가벼운 복사본입니다.</p>
-          </article>
-          <article class="term-card">
-            <span class="term-card__label">비교</span>
-            <strong>달라진 부분 찾기</strong>
-            <p>이전 설계도와 다음 설계도를 비교해 무엇이 바뀌었는지 정리합니다.</p>
-          </article>
-          <article class="term-card">
-            <span class="term-card__label">반영</span>
-            <strong>실제 반영 목록</strong>
-            <p>텍스트 변경, 속성 변경, 노드 추가/삭제처럼 필요한 작업만 모아둡니다.</p>
-          </article>
-          <article class="term-card">
-            <span class="term-card__label">이력</span>
-            <strong>이전 화면 저장</strong>
-            <p>반영이 끝난 상태를 저장해 두고 이전 상태 / 다음 상태로 다시 꺼내 볼 수 있습니다.</p>
-          </article>
-        </div>
+        <p class="eyebrow">탐정 수사 보드 가상 DOM 데모</p>
+        <h1>수사 보드는 왜<br />바뀐 단서만 옮길까?</h1>
       </header>
-
-      <!-- MOD: 발표자가 그대로 따라 말할 수 있도록 3단계 이야기 구조를 추가 -->
-      <section class="story-strip">
-        <article class="story-card">
-          <span class="story-card__step">1단계</span>
-          <h2>다음 화면을 먼저 만든다</h2>
-          <p>입력창이나 프리셋 버튼으로 “어떤 화면이 되길 원하는지”를 먼저 정합니다.</p>
-        </article>
-        <article class="story-card">
-          <span class="story-card__step">2단계</span>
-          <h2>컴퓨터가 차이를 찾는다</h2>
-          <p>오른쪽 후보 화면을 보고, 제목이 바뀌었는지 목록이 추가됐는지 비교합니다.</p>
-        </article>
-        <article class="story-card">
-          <span class="story-card__step">3단계</span>
-          <h2>실제 화면에는 필요한 만큼만 반영한다</h2>
-          <p>반영 버튼을 누르면 바뀐 부분만 왼쪽 실제 화면에 적용되고 이력에도 저장됩니다.</p>
-        </article>
-      </section>
 
       <!-- MOD: 버튼과 상태 카드를 초심자 친화적인 문장으로 다시 정리 -->
       <section class="toolbar">
         <div class="toolbar__buttons">
-          <button id="patch-button" class="button button--primary" type="button">변화 반영</button>
-          <button id="undo-button" class="button" type="button" disabled>이전 상태</button>
-          <button id="redo-button" class="button" type="button" disabled>다음 상태</button>
-          <button id="reset-button" class="button button--subtle" type="button">처음 샘플로</button>
-          <button id="benchmark-button" class="button button--subtle" type="button">⚡ 벤치마크</button>
+          <div class="toolbar__main-actions">
+            <button id="patch-button" class="button button--primary" type="button">변화 반영</button>
+            <button id="undo-button" class="button" type="button" disabled>이전 보드</button>
+            <button id="redo-button" class="button" type="button" disabled>다음 보드</button>
+            <button id="reset-button" class="button button--subtle" type="button">초기 사건으로</button>
+            <button id="benchmark-button" class="button button--subtle" type="button">⚡ 벤치마크</button>
+          </div>
+
+          <!-- MOD: 발표용 빠른 시나리오 버튼을 상단 조작 버튼 영역으로 이동 -->
+          <div class="toolbar__scenario-actions">
+            <button class="chip-button" type="button" data-scenario="text">사건명 바꾸기</button>
+            <button class="chip-button" type="button" data-scenario="props">긴급도 바꾸기</button>
+            <button class="chip-button" type="button" data-scenario="add">단서 1개 추가</button>
+            <button class="chip-button" type="button" data-scenario="remove">단서 1개 제거</button>
+            <button class="chip-button" type="button" data-scenario="replace">보드 태그 바꾸기</button>
+            <button class="chip-button chip-button--secondary" type="button" data-scenario="sync">
+              현재 수사 보드 불러오기
+            </button>
+          </div>
+
+          <p id="scenario-message" class="visually-hidden">
+            발표 전에 시나리오 버튼을 눌러 “오른쪽 후보 화면”을 빠르게 준비할 수 있습니다.
+          </p>
         </div>
 
         <div class="metric-grid">
@@ -77,47 +49,20 @@
             <strong id="state-indicator">준비 중</strong>
           </article>
           <article class="metric-card">
-            <span class="metric-card__label">저장된 화면</span>
+            <span class="metric-card__label">저장된 보드</span>
             <strong id="history-indicator">0 / 0</strong>
           </article>
           <article class="metric-card">
-            <span class="metric-card__label">바뀐 작업 수</span>
+            <span class="metric-card__label">바뀐 단서 수</span>
             <strong id="patch-count">0</strong>
           </article>
         </div>
       </section>
 
-      <!-- MOD: 발표 중 오타 없이 핵심 케이스를 재현하는 프리셋 시나리오 -->
-      <section class="panel scenario-panel">
-        <div class="panel__header panel__header--tight">
-          <div>
-            <h2>발표용 빠른 시나리오</h2>
-            <p>모르는 사람에게 보여줄 때는 한 번에 하나의 변화만 보여주는 것이 가장 쉽습니다.</p>
-          </div>
-          <p class="panel__meta">프리셋은 현재 실제 화면을 기준으로 다음 초안을 자동으로 만듭니다.</p>
-        </div>
-
-        <div class="scenario-buttons">
-          <button class="chip-button" type="button" data-scenario="text">제목만 바꾸기</button>
-          <button class="chip-button" type="button" data-scenario="props">속성만 바꾸기</button>
-          <button class="chip-button" type="button" data-scenario="add">목록 1개 추가</button>
-          <button class="chip-button" type="button" data-scenario="remove">목록 1개 삭제</button>
-          <button class="chip-button" type="button" data-scenario="replace">루트 태그 바꾸기</button>
-          <button class="chip-button chip-button--secondary" type="button" data-scenario="sync">
-            현재 실제 화면 불러오기
-          </button>
-        </div>
-
-        <p id="scenario-message" class="scenario-note">
-          발표 전에 시나리오 버튼을 눌러 “오른쪽 후보 화면”을 빠르게 준비할 수 있습니다.
-        </p>
-      </section>
-
       <main class="workspace">
         <section class="panel">
           <div class="panel__header">
-            <h2>1. 지금 실제 화면</h2>
-            <p>메인 페이지 안에 들어 있는 독립 웹페이지입니다. 변화 반영이 성공할 때만 바뀝니다.</p>
+            <h2>1. 현재 수사 보드</h2>
           </div>
 
           <!-- MOD: 메인 페이지 안에 실제 화면 전용 웹페이지를 넣기 위한 iframe -->
@@ -125,23 +70,22 @@
             <iframe
               id="real-frame"
               class="surface-frame"
-              title="지금 실제 화면 웹페이지"
+              title="현재 수사 보드 웹페이지"
               loading="eager"
             ></iframe>
           </div>
 
           <div class="surface-legend">
-            <span class="legend-chip legend-chip--add">초록: 새로 추가</span>
-            <span class="legend-chip legend-chip--update">주황: 내용 또는 속성 변경</span>
-            <span class="legend-chip legend-chip--replace">파랑: 태그 교체</span>
-            <span class="legend-chip legend-chip--remove">빨강: 삭제가 일어난 위치</span>
+            <span class="legend-chip legend-chip--add">초록: 새 단서 추가</span>
+            <span class="legend-chip legend-chip--update">주황: 내용 또는 상태 변경</span>
+            <span class="legend-chip legend-chip--replace">파랑: 보드 종류 교체</span>
+            <span class="legend-chip legend-chip--remove">빨강: 사라진 단서 위치</span>
           </div>
         </section>
 
         <section class="panel">
           <div class="panel__header">
-            <h2>2. 다음으로 바뀔 후보 화면</h2>
-            <p>메인 페이지 안에 들어 있는 또 다른 독립 웹페이지입니다. 실제 반영 전 비교용으로만 사용됩니다.</p>
+            <h2>2. 다음 가설 보드</h2>
           </div>
 
           <!-- MOD: 메인 페이지 안에 후보 화면 전용 웹페이지를 넣기 위한 iframe -->
@@ -149,12 +93,12 @@
             <iframe
               id="test-frame"
               class="surface-frame"
-              title="다음 후보 화면 웹페이지"
+              title="다음 가설 보드 웹페이지"
               loading="eager"
             ></iframe>
           </div>
           <p class="surface-caption">
-            오른쪽 작은 웹페이지는 비교용 문서입니다. 공백만 있는 글자와 주석은 정규 규칙에 따라 제외됩니다.
+            오른쪽 작은 웹페이지는 아직 반영되지 않은 가설 보드입니다. 비교 규칙에 맞지 않는 공백 텍스트와 주석은 자동으로 제외됩니다.
           </p>
         </section>
       </main>
@@ -162,40 +106,140 @@
       <section class="insight-grid">
         <section class="panel panel--editor">
           <div class="panel__header">
-            <h2>3. 직접 수정해 보기</h2>
-            <p>원하는 HTML을 적으면 오른쪽 후보 화면이 먼저 바뀌고, 변화 반영 버튼을 눌러야 왼쪽에 반영됩니다.</p>
+            <h2>3. 수사 기록 수정하기</h2>
+            <p>코드를 직접 고치지 않고, 사건명과 단서 카드만 바꿔도 오른쪽 가설 보드가 먼저 달라집니다.</p>
           </div>
 
-          <label class="editor-label" for="html-input">다음 화면 HTML 코드</label>
-          <textarea id="html-input" class="editor-textarea" spellcheck="false"></textarea>
+          <!-- MOD: HTML 코드 편집 대신 사람이 읽기 쉬운 항목형 입력 폼으로 변경 -->
+          <div class="editor-form">
+            <label class="field-group field-group--card" for="field-title">
+              <span class="field-group__label">사건명</span>
+              <input id="field-title" class="field-input" type="text" placeholder="예: 붉은 열쇠 실종 사건" />
+            </label>
+
+            <label class="field-group field-group--card" for="field-badge">
+              <span class="field-group__label">사건 상태</span>
+              <input id="field-badge" class="field-input" type="text" placeholder="예: 유력 용의자 특정" />
+            </label>
+
+            <label class="field-group field-group--card" for="field-theme">
+              <span class="field-group__label">긴급도</span>
+              <select id="field-theme" class="field-input field-input--select">
+                <option value="mint">일반 수사</option>
+                <option value="berry">긴급 추적</option>
+              </select>
+            </label>
+
+            <label class="field-group field-group--card" for="field-root-tag">
+              <span class="field-group__label">보드 태그</span>
+              <select id="field-root-tag" class="field-input field-input--select">
+                <option value="section">section</option>
+                <option value="article">article</option>
+              </select>
+            </label>
+
+            <label class="field-group field-group--wide" for="field-description">
+              <span class="field-group__label">수사 메모</span>
+              <input
+                id="field-description"
+                class="field-input"
+                type="text"
+                placeholder="예: 북쪽 복도 CCTV가 오후 9시 14분에 마지막 신호를 남겼습니다."
+              />
+            </label>
+
+            <section class="field-card" aria-labelledby="suspect-a-title">
+              <div class="field-card__header">
+                <h3 id="suspect-a-title">용의자 A</h3>
+                <p>왼쪽 상단 프로필 카드입니다.</p>
+              </div>
+
+              <label class="field-group" for="suspect-one-name">
+                <span class="field-group__label">이름</span>
+                <input id="suspect-one-name" class="field-input" type="text" placeholder="예: 윤서진" />
+              </label>
+
+              <input id="suspect-one-photo" type="hidden" />
+
+              <div class="photo-lab" data-photo-slot="a">
+                <div class="photo-lab__preview">
+                  <img id="suspect-one-photo-preview" alt="용의자 A 사진 미리보기" />
+                </div>
+                <p id="suspect-one-photo-state" class="photo-lab__status">기본 수배 사진 사용 중</p>
+
+                <div class="photo-lab__actions">
+                  <label class="photo-upload" for="suspect-one-file">파일에서 사진 선택</label>
+                  <input id="suspect-one-file" class="visually-hidden" type="file" accept="image/*" />
+                  <button class="photo-reset" type="button" data-photo-reset="a">기본 생성으로 되돌리기</button>
+                </div>
+              </div>
+
+              <label class="field-group" for="suspect-one-note">
+                <span class="field-group__label">메모</span>
+                <input
+                  id="suspect-one-note"
+                  class="field-input"
+                  type="text"
+                  placeholder="예: 현장 마지막 출입 기록 보유"
+                />
+              </label>
+            </section>
+
+            <section class="field-card" aria-labelledby="suspect-b-title">
+              <div class="field-card__header">
+                <h3 id="suspect-b-title">용의자 B</h3>
+                <p>오른쪽 상단 프로필 카드입니다.</p>
+              </div>
+
+              <label class="field-group" for="suspect-two-name">
+                <span class="field-group__label">이름</span>
+                <input id="suspect-two-name" class="field-input" type="text" placeholder="예: 마준호" />
+              </label>
+
+              <input id="suspect-two-photo" type="hidden" />
+
+              <div class="photo-lab" data-photo-slot="b">
+                <div class="photo-lab__preview">
+                  <img id="suspect-two-photo-preview" alt="용의자 B 사진 미리보기" />
+                </div>
+                <p id="suspect-two-photo-state" class="photo-lab__status">기본 수배 사진 사용 중</p>
+
+                <div class="photo-lab__actions">
+                  <label class="photo-upload" for="suspect-two-file">파일에서 사진 선택</label>
+                  <input id="suspect-two-file" class="visually-hidden" type="file" accept="image/*" />
+                  <button class="photo-reset" type="button" data-photo-reset="b">기본 생성으로 되돌리기</button>
+                </div>
+              </div>
+
+              <label class="field-group" for="suspect-two-note">
+                <span class="field-group__label">메모</span>
+                <input
+                  id="suspect-two-note"
+                  class="field-input"
+                  type="text"
+                  placeholder="예: 정지된 회중시계와 동일 브랜드 소지"
+                />
+              </label>
+            </section>
+
+            <label class="field-group field-group--wide" for="field-items">
+              <span class="field-group__label">단서 카드</span>
+              <textarea
+                id="field-items"
+                class="field-input field-input--textarea"
+                spellcheck="false"
+                placeholder="한 줄에 하나씩 입력하세요.&#10;예: 검은 우산 소지"
+              ></textarea>
+            </label>
+
+          </div>
 
           <div class="editor-meta">
             <p id="validation-message" class="form-note" data-state="ok">
               초기 DOM을 로드하는 중입니다.
             </p>
             <p class="form-hint">
-              맨 바깥 요소는 1개만 허용됩니다. 공백만 있는 글자와 주석은 자동으로 제외됩니다.
-            </p>
-          </div>
-        </section>
-
-        <!-- MOD: raw JSON보다 먼저 사람 말로 현재 상태를 설명하는 패널 -->
-        <section class="panel panel--explain">
-          <div class="panel__header">
-            <h2>컴퓨터가 찾은 변화</h2>
-            <p>개발 용어가 익숙하지 않아도 따라올 수 있도록 사람 말로 먼저 설명합니다.</p>
-          </div>
-
-          <p id="story-status" class="story-status">
-            지금은 초기 화면을 준비하는 단계입니다.
-          </p>
-
-          <ul id="change-summary-list" class="change-summary-list"></ul>
-
-          <div class="speaker-note">
-            <span class="speaker-note__label">발표 멘트 예시</span>
-            <p id="speaker-note">
-              “오른쪽은 다음 후보 화면이고, 변화 반영을 누르면 왼쪽 실제 화면에 바뀐 부분만 반영됩니다.”
+              사건명, 단서 카드, 보드 태그를 바꾸면 오른쪽 가설 보드가 먼저 바뀌고, 변화 반영을 눌러야 왼쪽 현재 보드에 적용됩니다.
             </p>
           </div>
         </section>
@@ -205,35 +249,90 @@
       <section class="tech-grid">
         <details class="tech-card">
           <summary>기술 로그 보기</summary>
-          <p class="tech-card__hint">반영 작업 원본을 보고 싶은 사람을 위한 영역입니다.</p>
+          <p class="tech-card__hint">수사 보드에 적용될 원본 작업 목록을 보고 싶은 사람을 위한 영역입니다.</p>
           <pre id="patch-log" class="code-box">[상태] 초기화를 기다리는 중입니다.</pre>
-        </details>
-
-        <details class="tech-card">
-          <summary>가상 DOM JSON 보기</summary>
-          <p class="tech-card__hint">현재 정규화된 가상 DOM 스냅샷을 그대로 보여줍니다.</p>
-          <pre id="vdom-preview" class="code-box">{}</pre>
         </details>
       </section>
 
       <!-- MOD: 화면에는 직접 노출하지 않고, iframe 안의 실제/후보 페이지 초기 상태로만 사용하는 샘플 템플릿 -->
       <template id="initial-card-template">
-        <section class="catalog-card" data-state="initial" data-theme="mint">
-          <header class="catalog-card__header">
-            <p class="catalog-card__eyebrow">이번 주 추천</p>
-            <h3>정글 간식 꾸러미</h3>
+        <section class="catalog-card case-board" data-state="initial" data-theme="mint">
+          <header class="catalog-card__header case-board__headline">
+            <div>
+              <p class="catalog-card__eyebrow">사건 번호 0712</p>
+              <h3>붉은 열쇠 실종 사건</h3>
+            </div>
+            <span class="case-board__stamp">증거 검토</span>
           </header>
+
+          <div class="case-board__grid">
+            <section class="case-board__suspects" aria-label="용의자 카드">
+              <article class="suspect-card suspect-card--primary" data-suspect="a">
+                <span class="suspect-card__pin"></span>
+                <div class="suspect-card__photo">
+                  <img
+                    src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 240'%3E%3Crect width='220' height='240' rx='24' fill='%23ddd4ca'/%3E%3Crect x='24' y='22' width='172' height='196' rx='18' fill='%23c5b7a5'/%3E%3Ccircle cx='110' cy='92' r='38' fill='%23998171'/%3E%3Cpath d='M58 188c14-34 38-50 52-50s38 16 52 50' fill='%23998171'/%3E%3Cpath d='M34 36h152' stroke='%237a2419' stroke-width='6' stroke-linecap='round'/%3E%3Ctext x='110' y='214' text-anchor='middle' font-size='18' font-family='Arial' fill='%237a2419'%3EA-12%3C/text%3E%3C/svg%3E"
+                    alt="윤서진 용의자 사진"
+                    data-photo-input=""
+                  />
+                </div>
+                <strong>윤서진</strong>
+                <p>현장 마지막 출입 기록 보유</p>
+              </article>
+              <article class="suspect-card" data-suspect="b">
+                <span class="suspect-card__pin"></span>
+                <div class="suspect-card__photo">
+                  <img
+                    src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 220 240'%3E%3Crect width='220' height='240' rx='24' fill='%23e4dacd'/%3E%3Crect x='24' y='22' width='172' height='196' rx='18' fill='%23d0c0af'/%3E%3Ccircle cx='110' cy='92' r='38' fill='%238f7a69'/%3E%3Cpath d='M58 188c14-34 38-50 52-50s38 16 52 50' fill='%238f7a69'/%3E%3Cpath d='M34 36h152' stroke='%23425f73' stroke-width='6' stroke-linecap='round'/%3E%3Ctext x='110' y='214' text-anchor='middle' font-size='18' font-family='Arial' fill='%23425f73'%3EB-07%3C/text%3E%3C/svg%3E"
+                    alt="마준호 용의자 사진"
+                    data-photo-input=""
+                  />
+                </div>
+                <strong>마준호</strong>
+                <p>정지된 회중시계와 동일 브랜드 소지</p>
+              </article>
+            </section>
+
+            <aside class="case-board__evidence" aria-label="핵심 증거">
+              <article class="evidence-photo">
+                <span class="evidence-photo__pin"></span>
+                <img
+                  class="evidence-photo__image"
+                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 190'%3E%3Crect width='240' height='190' rx='20' fill='%23efe7da'/%3E%3Crect x='18' y='18' width='204' height='110' rx='14' fill='%23cfb691'/%3E%3Cpath d='M34 110l36-30 30 18 40-40 30 18 36-26' fill='none' stroke='%237a2419' stroke-width='10' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ctext x='120' y='154' text-anchor='middle' font-size='20' font-family='Arial' fill='%23513a2d'%3EKEY EVIDENCE%3C/text%3E%3C/svg%3E"
+                  alt="핵심 증거 사진"
+                />
+                <strong>핵심 증거 봉투</strong>
+                <p class="evidence-photo__caption">감식팀이 회중시계 표면에서 미세한 붉은 섬유를 확인했습니다.</p>
+              </article>
+
+              <div class="case-board__thread-map" aria-hidden="true">
+                <span class="thread-map__line"></span>
+                <span class="thread-map__line thread-map__line--angled"></span>
+                <span class="thread-map__dot thread-map__dot--left"></span>
+                <span class="thread-map__dot thread-map__dot--right"></span>
+              </div>
+            </aside>
+          </div>
+
           <p class="catalog-card__body">
-            오늘 오후 6시 전에 주문하면 <strong>내일 오전</strong> 출고할 예정입니다.
+            박물관 북쪽 복도 CCTV가 <strong>오후 9시 14분</strong>에 마지막 신호를 남겼습니다.
           </p>
+
           <ul class="catalog-card__list">
-            <li data-item="apple">사과칩 2개</li>
-            <li data-item="banana">바나나쿠키 1개</li>
-            <li data-item="orange">오렌지티 3개</li>
+            <li data-item="umbrella">검은 우산 소지</li>
+            <li data-item="shoe">젖은 발자국 발견</li>
+            <li data-item="clock">정지된 회중시계 확보</li>
           </ul>
+
+          <div class="case-board__timeline" aria-label="사건 흐름">
+            <div class="timeline-chip">21:08 경보 해제</div>
+            <div class="timeline-chip">21:14 CCTV 종료</div>
+            <div class="timeline-chip">21:19 열쇠 분실 신고</div>
+          </div>
+
           <footer class="catalog-card__footer">
-            <span class="sample-badge">오늘 준비됨</span>
-            <button class="sample-cta" type="button" disabled>구성 보기</button>
+            <span class="sample-badge">추적 중</span>
+            <button class="sample-cta" type="button" disabled>증거 봉투 열람</button>
           </footer>
         </section>
       </template>
