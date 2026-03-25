@@ -455,26 +455,6 @@ function refreshPhotoControls() {
 }
 
 /**
- * Build a stylized evidence snapshot for the board side panel.
- */
-function createEvidencePhoto(title, badge, theme) {
-  const stroke = theme === "berry" ? "#8e251c" : "#7a2419";
-  const accent = theme === "berry" ? "#d5b39d" : "#cfb691";
-  const badgeText = badge || "추적 중";
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 190">
-      <rect width="240" height="190" rx="20" fill="#efe7da"/>
-      <rect x="18" y="18" width="204" height="110" rx="14" fill="${accent}"/>
-      <path d="M34 110l36-30 30 18 40-40 30 18 36-26" fill="none" stroke="${stroke}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
-      <text x="120" y="152" text-anchor="middle" font-size="18" font-family="Arial" fill="#513a2d">${title.slice(0, 10)}</text>
-      <text x="120" y="172" text-anchor="middle" font-size="15" font-family="Arial" fill="${stroke}">${badgeText.slice(0, 12)}</text>
-    </svg>
-  `;
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
-/**
  * Format one DOM node into readable HTML for the direct code editor.
  */
 function formatDomNodeAsHtml(node, depth = 0) {
@@ -529,9 +509,7 @@ function formatDomNodeAsHtml(node, depth = 0) {
  */
 function prepareDomForCodeEditor(root) {
   const preparedRoot = root.cloneNode(true);
-  const title = preparedRoot.querySelector("h1, h2, h3, h4")?.textContent?.trim() ?? "수사 보드";
   const theme = preparedRoot.getAttribute("data-theme") ?? "mint";
-  const badge = preparedRoot.querySelector(".sample-badge")?.textContent?.trim() ?? "";
 
   preparedRoot.querySelectorAll(".suspect-card[data-suspect]").forEach((card) => {
     const slot = card.getAttribute("data-suspect") ?? "a";
@@ -551,21 +529,9 @@ function prepareDomForCodeEditor(root) {
     }
   });
 
-  const evidenceImage = preparedRoot.querySelector(".evidence-photo__image");
-
-  if (evidenceImage) {
-    evidenceImage.setAttribute("src", "auto-evidence-image");
-    evidenceImage.setAttribute("alt", `${title} 자동 생성 증거 이미지`);
-  }
-
   const stamp = preparedRoot.querySelector(".case-board__stamp");
   if (stamp && !stamp.textContent?.trim()) {
     stamp.textContent = theme === "berry" ? "긴급 추적" : "증거 검토";
-  }
-
-  const evidenceCaption = preparedRoot.querySelector(".evidence-photo__caption");
-  if (evidenceCaption && !evidenceCaption.textContent?.trim()) {
-    evidenceCaption.textContent = `${badge || "추적 중"} 상태에서 먼저 확인할 증거 메모`;
   }
 
   return preparedRoot;
@@ -601,8 +567,6 @@ function syncDirectCodeEditorFromVdom(vdom, message = "현재 수사 보드 HTML
  */
 function normalizeRootFromDirectCode(root) {
   const theme = root.getAttribute("data-theme") ?? "mint";
-  const title = root.querySelector("h1, h2, h3, h4")?.textContent?.trim() ?? "수사 보드";
-  const badge = root.querySelector(".sample-badge")?.textContent?.trim() ?? "";
 
   root.querySelectorAll(".suspect-card[data-suspect]").forEach((card) => {
     const slot = card.getAttribute("data-suspect") ?? "a";
@@ -624,17 +588,6 @@ function normalizeRootFromDirectCode(root) {
 
     image.setAttribute("alt", `${name} 용의자 사진`);
   });
-
-  const evidenceImage = root.querySelector(".evidence-photo__image");
-  if (evidenceImage) {
-    const source = evidenceImage.getAttribute("src")?.trim() ?? "";
-
-    if (!source || source === "auto-evidence-image") {
-      evidenceImage.setAttribute("src", createEvidencePhoto(title, badge, theme));
-    }
-
-    evidenceImage.setAttribute("alt", `${title} 핵심 증거 이미지`);
-  }
 
   return root;
 }
@@ -853,17 +806,6 @@ function buildVdomFromEditor(values) {
 
     suspectNode?.classList.toggle("suspect-card--primary", index === 0);
   });
-
-  const evidenceImage = root.querySelector(".evidence-photo__image");
-  if (evidenceImage) {
-    evidenceImage.src = createEvidencePhoto(values.title, values.badge, values.theme);
-    evidenceImage.alt = `${values.title} 핵심 증거 이미지`;
-  }
-
-  const evidenceCaption = root.querySelector(".evidence-photo__caption");
-  if (evidenceCaption) {
-    evidenceCaption.textContent = `${values.badge || "추적 중"} 상태에서 가장 먼저 확인해야 할 증거를 우선 표시했습니다.`;
-  }
 
   return domToVdom(root);
 }

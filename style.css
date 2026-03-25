@@ -110,6 +110,13 @@ select {
   color: #2f1c16;
 }
 
+.hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 .subtitle {
   max-width: 820px;
   margin: 14px 0 0;
