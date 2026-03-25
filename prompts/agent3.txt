@@ -6,31 +6,43 @@
 
 [담당 범위]
 1) getNodeByPath(root, path)
-- childNodes 인덱스로 순회
-- path []면 root 반환
+- path [] 면 root 반환
+- path 해석은 raw childNodes 전체가 아니라, 공통 규격의 의미 있는 자식 노드 순서 기준으로 순회
+- 즉, Element 노드 + 공백-only가 아닌 Text 노드만 경로 계산 대상이며, Comment / 공백-only Text는 건너뜀
 
 2) applyPatches(rootDom, patches)
-- patch 순서대로 처리
+- patch 배열 순서를 기본 그대로 처리
 - ADD / REMOVE / REPLACE / PROPS_UPDATE / TEXT_UPDATE 모두 반영
-- ADD는 공통 규격대로 path를 "부모 경로", index를 삽입 위치로 해석
+- ADD는 공통 규격대로 path를 부모 경로, index를 의미 있는 자식 기준 삽입 위치로 해석
 - REMOVE / REPLACE / TEXT_UPDATE / PROPS_UPDATE는 path를 대상 노드 경로로 해석
+- 반환값은 patch 적용 후의 현재 루트 DOM 노드
 
-3) 내부 유틸
+3) ADD 삽입 규칙
+- 부모의 raw childNodes 전체가 아니라 의미 있는 자식 노드 목록을 기준으로 삽입 위치를 계산
+- index 위치에 기존 의미 있는 자식이 있으면 그 노드 앞에 insertBefore
+- index 위치의 의미 있는 자식이 없으면 appendChild
+
+4) 내부 유틸
 - applyPropsUpdate(node, setProps, removeProps)
+- isMeaningfulNode(node) 또는 getMeaningfulChildNodes(node) 같은 내부 헬퍼 작성 가능
 - create node는 반드시 vdomToDom 사용(중복 구현 금지)
 
-4) 루트 처리
-- rootDom은 patch 대상 루트 노드로 가정
-- path []에서 REMOVE / REPLACE가 들어올 수 있으므로 루트 교체 / 삭제 케이스를 방어적으로 처리
-- 잘못된 path가 들어오면 조용히 무시하거나 경고 로그를 남기는 방식 중 하나로 일관되게 처리
+5) 루트 처리
+- rootDom은 컨테이너가 아니라 patch 대상 루트 노드로 가정
+- rootDom은 이미 정규화된 DOM이라고 가정합니다
+- 즉, 무시 대상 공백-only Text와 Comment가 제거된 canonical DOM만 patch 대상으로 들어온다고 보고 구현합니다
+- path [] 에서 REPLACE가 들어오면 새 루트 노드로 교체하고, 반환값도 그 새 루트로 갱신
+- 이번 프로젝트에서는 path [] 의 REMOVE는 정상 시나리오가 아니므로, 들어오면 방어적으로 무시하거나 경고 로그를 남길 것
+- 잘못된 path가 들어오면 앱이 죽지 않도록 일관된 방식으로 방어 처리
 
 [중요]
 - 최소 DOM 조작 원칙 준수
-- 위험한 태그(script) 처리 제한이 필요하면 안전 주석 추가
+- REMOVE patch의 안전한 순서는 팀원 B가 같은 부모 기준 index 내림차순으로 생성한다는 공통 계약을 따른다
+- 따라서 applyPatches는 REMOVE patch를 별도 재정렬하지 않고 받은 순서를 신뢰해 처리한다
 - diff / history / UI 로직은 건드리지 말 것
 - vdomToDom은 팀원 A가 만든 함수를 사용
 - 부분 업데이트가 눈에 보이도록 불필요한 전체 재생성 대신 patch 타입별 최소 DOM 조작을 우선할 것
-- 발표 설명을 위해 어떤 DOM API(childNodes, replaceWith, remove, insertBefore, setAttribute 등)를 썼는지 정리 가능하게 구현할 것
+- 발표 설명을 위해 어떤 DOM API(childNodes, insertBefore, appendChild, replaceWith, remove, setAttribute 등)를 썼는지 정리 가능하게 구현할 것
 
 [산출물]
 - patch 타입별 DOM API 사용 요약

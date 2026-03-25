@@ -6,31 +6,36 @@
 
 [담당 범위]
 1) diff(oldVDOM, newVDOM, path = [])
-- 5가지 케이스 반드시 생성:
+- 5가지 케이스를 반드시 생성:
   ADD, REMOVE, REPLACE, PROPS_UPDATE, TEXT_UPDATE
 - 비교 기준:
   - old 없음 / new 있음 => ADD
   - old 있음 / new 없음 => REMOVE
   - type 다름 => REPLACE
   - 둘 다 #text && text 다름 => TEXT_UPDATE
-  - 같은 element면 props diff + children index 재귀
+  - 같은 element면 props diff + children diff
 
 2) propsDiff 유틸(내부 함수로 구현 가능)
 - setProps / removeProps 계산
 
 3) children diff
-- maxLen까지 루프
-- path는 child index 누적
-- 단, ADD patch는 공통 규격에 따라 path를 "부모 경로"로 생성하고 index에 삽입 위치를 넣을 것
-- REMOVE / REPLACE / PROPS_UPDATE / TEXT_UPDATE는 path를 대상 노드 경로로 생성
+- child index는 VDOM children 배열 순서를 그대로 사용
+- 공통 구간(0 .. minLen - 1)은 앞에서부터 비교
+- 추가 자식이 있으면 ADD patch를 생성
+- 삭제 자식이 있으면 REMOVE patch를 생성
+- ADD patch는 공통 규격에 따라 path를 부모 경로로 생성하고, index에 삽입 위치를 넣을 것
+- REMOVE / REPLACE / PROPS_UPDATE / TEXT_UPDATE는 path를 대상 노드 경로로 생성할 것
+- 루트 태그 변경은 REPLACE at path [] 로 처리할 것
 
 [중요]
 - key 기반 / move 최적화는 구현하지 말고 주석으로 제한사항 명시
 - patch 객체 필드는 공통 규격 그대로 유지
 - DOM 조작 코드는 작성하지 말고 patch 생성에만 집중
-- 루트 path [] 케이스를 정상적으로 처리할 것
+- oldVDOM / newVDOM은 이미 공통 규격에 따라 정규화된 VDOM이라고 가정하고 비교할 것
+- 이번 프로젝트에서는 최상위 루트 삭제(path [] REMOVE)는 생성하지 말 것
+- 같은 부모 아래에서 여러 REMOVE가 필요하면 REMOVE patch를 반드시 큰 index부터 생성할 것
+- 즉, oldChildren 쪽 tail 제거는 뒤에서 앞으로 처리해야 함
 - README 발표를 위해 5가지 핵심 diff 케이스를 설명하기 쉬운 구조와 주석을 유지할 것
-- contenteditable 편집 특성상 공백 텍스트 노드가 섞일 수 있으므로 공통 정책(trim() === "")을 전제로 일관되게 비교할 것
 
 [산출물]
 - diff 관련 함수 코드

@@ -9,72 +9,122 @@
   <body>
     <div class="app-shell">
       <header class="hero">
-        <p class="eyebrow">Vanilla JS Team Project</p>
+        <p class="eyebrow">Vanilla JS Virtual DOM Prototype</p>
         <h1>Mini Virtual DOM Playground</h1>
         <p class="subtitle">
-          DOM -> Virtual DOM -> Diff -> Patch -> History 흐름을 직접 구현하고
-          시각적으로 검증하는 실험 페이지
+          실제 DOM을 읽어 Virtual DOM으로 바꾸고, textarea에서 수정한 HTML을 diff / patch /
+          history 흐름으로 검증하는 발표용 프로토타입
         </p>
       </header>
 
       <section class="toolbar">
         <div class="toolbar__buttons">
-          <button id="patch-button" class="button button--primary" type="button">
-            Patch
-          </button>
-          <button id="undo-button" class="button" type="button" disabled>
-            Undo
-          </button>
-          <button id="redo-button" class="button" type="button" disabled>
-            Redo
-          </button>
-          <button id="reset-button" class="button" type="button">
-            Reset
-          </button>
+          <button id="patch-button" class="button button--primary" type="button">Patch</button>
+          <button id="undo-button" class="button" type="button" disabled>Undo</button>
+          <button id="redo-button" class="button" type="button" disabled>Redo</button>
+          <button id="reset-button" class="button button--subtle" type="button">Reset</button>
         </div>
 
-        <div class="status-card">
-          <span class="status-card__label">State</span>
-          <strong id="state-indicator">Ready</strong>
+        <div class="metric-grid">
+          <article class="metric-card">
+            <span class="metric-card__label">State</span>
+            <strong id="state-indicator">Ready</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-card__label">History</span>
+            <strong id="history-indicator">0 / 0</strong>
+          </article>
+          <article class="metric-card">
+            <span class="metric-card__label">Last Patch</span>
+            <strong id="patch-count">0</strong>
+          </article>
         </div>
       </section>
 
       <main class="workspace">
         <section class="panel">
           <div class="panel__header">
-            <h2>실제 영역</h2>
-            <p>Patch 적용 대상</p>
+            <h2>Actual Area</h2>
+            <p>Patch가 실제로 반영되는 기준 DOM입니다.</p>
           </div>
-          <div id="real-root" class="surface"></div>
+          <div id="real-root" class="surface surface--actual">
+            <section class="catalog-card" data-state="initial" data-theme="mint">
+              <header class="catalog-card__header">
+                <p class="catalog-card__eyebrow">Weekly Pick</p>
+                <h3>Crafton Jungle Snack Box</h3>
+              </header>
+              <p class="catalog-card__body">
+                오늘 오후 6시 전에 주문하면 <strong>내일 오전</strong> 출고 예정입니다.
+              </p>
+              <ul class="catalog-card__list">
+                <li data-item="apple">사과칩 2개</li>
+                <li data-item="banana">바나나쿠키 1개</li>
+                <li data-item="orange">오렌지티 3개</li>
+              </ul>
+              <footer class="catalog-card__footer">
+                <span class="sample-badge">Fresh Batch</span>
+                <button class="sample-cta" type="button" disabled>구성 보기</button>
+              </footer>
+            </section>
+          </div>
         </section>
 
         <section class="panel">
           <div class="panel__header">
-            <h2>테스트 영역</h2>
-            <p>contenteditable 기반 편집 대상</p>
+            <h2>Test Preview</h2>
+            <p>textarea 입력을 canonical VDOM으로 파싱한 뒤 다시 렌더링한 미리보기입니다.</p>
           </div>
-          <div
-            id="test-root"
-            class="surface surface--editable"
-            contenteditable="true"
-            spellcheck="false"
-          ></div>
+          <div id="test-root" class="surface surface--preview"></div>
         </section>
       </main>
+
+      <section class="editor-grid">
+        <section class="panel panel--editor">
+          <div class="panel__header">
+            <h2>HTML Input</h2>
+            <p>여기서 HTML 문자열을 수정하고 Patch 버튼으로 실제 영역에 반영합니다.</p>
+          </div>
+          <label class="editor-label" for="html-input">테스트 HTML 문자열</label>
+          <textarea id="html-input" class="editor-textarea" spellcheck="false"></textarea>
+          <div class="editor-meta">
+            <p id="validation-message" class="form-note" data-state="ok">
+              초기 DOM을 로드하는 중입니다.
+            </p>
+            <p class="form-hint">
+              최상위 element는 1개만 허용됩니다. 공백-only Text와 Comment는 자동으로
+              제외됩니다.
+            </p>
+          </div>
+        </section>
+
+        <section class="panel panel--tips">
+          <div class="panel__header">
+            <h2>Quick Try</h2>
+            <p>발표 데모에서 바로 보여주기 좋은 수정 포인트입니다.</p>
+          </div>
+          <ul class="tip-list">
+            <li>`h3` 텍스트를 바꿔서 `TEXT_UPDATE`를 확인해 보세요.</li>
+            <li>`data-theme`나 `class`를 수정해서 `PROPS_UPDATE`를 확인해 보세요.</li>
+            <li>`li`를 추가하거나 삭제해서 `ADD` / `REMOVE`를 확인해 보세요.</li>
+            <li>`section`을 `article`로 바꿔 루트 `REPLACE`를 확인해 보세요.</li>
+            <li>Patch 후 Undo / Redo로 history 전체 동기화를 확인해 보세요.</li>
+          </ul>
+        </section>
+      </section>
 
       <section class="inspector-grid">
         <section class="panel panel--compact">
           <div class="panel__header">
             <h2>Patch Log</h2>
-            <p>현재는 초기 뼈대만 구성되어 있습니다.</p>
+            <p>현재 cycle에서 생성된 patch 목록과 history 처리 결과를 표시합니다.</p>
           </div>
-          <pre id="patch-log" class="code-box">[info] Waiting for diff / patch implementation.</pre>
+          <pre id="patch-log" class="code-box">[status] Waiting for initialization.</pre>
         </section>
 
         <section class="panel panel--compact">
           <div class="panel__header">
             <h2>Virtual DOM Preview</h2>
-            <p>초기 샘플 구조를 표시합니다.</p>
+            <p>현재 canonical VDOM 스냅샷을 JSON으로 확인합니다.</p>
           </div>
           <pre id="vdom-preview" class="code-box">{}</pre>
         </section>
@@ -84,4 +134,3 @@
     <script type="module" src="./main.js"></script>
   </body>
 </html>
-
