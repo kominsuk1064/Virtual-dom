@@ -193,14 +193,25 @@ input {
 }
 
 .toolbar {
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 1fr;
   align-items: start;
 }
 
 .toolbar__buttons {
+  display: grid;
+  gap: 10px;
+}
+
+.toolbar__main-actions,
+.toolbar__scenario-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  align-items: center;
+}
+
+.toolbar__scenario-actions {
+  min-height: 52px;
 }
 
 .button,
@@ -217,6 +228,7 @@ input {
     border-color 180ms ease,
     background 180ms ease,
     box-shadow 180ms ease;
+  white-space: nowrap;
 }
 
 .button:hover:not(:disabled),
@@ -247,10 +259,23 @@ input {
   color: #7f3b1d;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(120px, 1fr));
   gap: 10px;
+  width: 100%;
 }
 
 .metric-card {
@@ -330,11 +355,17 @@ input {
 }
 
 .insight-grid {
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.95fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .tech-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* MOD: 아래 편집/기술 패널을 위 실제/후보 화면 2칸을 합친 전체 폭으로 확장 */
+.insight-grid > *,
+.tech-grid > * {
+  grid-column: 1 / -1;
 }
 
 .surface {
@@ -442,24 +473,51 @@ input {
   text-transform: uppercase;
 }
 
-.editor-textarea {
-  width: 100%;
-  min-height: 340px;
-  padding: 16px;
-  resize: vertical;
-  border: 1px solid rgba(19, 33, 43, 0.2);
-  border-radius: 20px;
-  background: linear-gradient(180deg, #13212b 0%, #1a2e3c 100%);
-  color: #dcecf5;
-  font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
-  font-size: 14px;
-  line-height: 1.6;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+/* MOD: 코드 textarea 대신 읽기 쉬운 항목형 입력 폼 */
+.editor-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
-.editor-textarea:focus {
-  outline: 2px solid rgba(21, 111, 99, 0.32);
+.field-group {
+  display: grid;
+  gap: 8px;
+}
+
+.field-group--wide {
+  grid-column: 1 / -1;
+}
+
+.field-group__label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.field-input {
+  width: 100%;
+  min-height: 54px;
+  padding: 14px 16px;
+  border: 1px solid rgba(112, 95, 72, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.55;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.field-input:focus {
+  outline: 2px solid rgba(21, 111, 99, 0.24);
   outline-offset: 2px;
+  border-color: rgba(21, 111, 99, 0.36);
+}
+
+.field-input--textarea {
+  min-height: 170px;
+  resize: vertical;
 }
 
 .editor-meta {
@@ -798,7 +856,7 @@ input {
   }
 
   .surface,
-  .editor-textarea,
+  .field-input,
   .code-box {
     border-radius: 18px;
   }
@@ -813,5 +871,13 @@ input {
 
   .surface-frame {
     height: 460px;
+  }
+
+  .editor-form {
+    grid-template-columns: 1fr;
+  }
+
+  .field-group--wide {
+    grid-column: auto;
   }
 }

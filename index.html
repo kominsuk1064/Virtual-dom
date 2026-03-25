@@ -12,61 +12,33 @@
       <header class="hero panel panel--hero">
         <p class="eyebrow">처음 보는 사람도 이해하는 가상 DOM 데모</p>
         <h1>웹페이지는 왜<br />바뀐 부분만 고칠까?</h1>
-        <p class="subtitle">
-          왼쪽은 지금 실제 화면이고, 오른쪽은 곧 바뀔 후보 화면입니다. 컴퓨터는 두 화면을
-          비교해서 달라진 부분만 찾아낸 뒤, 실제 화면에 꼭 필요한 만큼만 반영합니다.
-        </p>
-
-        <div class="term-grid">
-          <article class="term-card">
-            <span class="term-card__label">가상 DOM</span>
-            <strong>비교용 설계도</strong>
-            <p>실제 화면을 바로 고치기 전에, JS 객체로 만든 가벼운 복사본입니다.</p>
-          </article>
-          <article class="term-card">
-            <span class="term-card__label">비교</span>
-            <strong>달라진 부분 찾기</strong>
-            <p>이전 설계도와 다음 설계도를 비교해 무엇이 바뀌었는지 정리합니다.</p>
-          </article>
-          <article class="term-card">
-            <span class="term-card__label">반영</span>
-            <strong>실제 반영 목록</strong>
-            <p>텍스트 변경, 속성 변경, 노드 추가/삭제처럼 필요한 작업만 모아둡니다.</p>
-          </article>
-          <article class="term-card">
-            <span class="term-card__label">이력</span>
-            <strong>이전 화면 저장</strong>
-            <p>반영이 끝난 상태를 저장해 두고 이전 상태 / 다음 상태로 다시 꺼내 볼 수 있습니다.</p>
-          </article>
-        </div>
       </header>
-
-      <!-- MOD: 발표자가 그대로 따라 말할 수 있도록 3단계 이야기 구조를 추가 -->
-      <section class="story-strip">
-        <article class="story-card">
-          <span class="story-card__step">1단계</span>
-          <h2>다음 화면을 먼저 만든다</h2>
-          <p>입력창이나 프리셋 버튼으로 “어떤 화면이 되길 원하는지”를 먼저 정합니다.</p>
-        </article>
-        <article class="story-card">
-          <span class="story-card__step">2단계</span>
-          <h2>컴퓨터가 차이를 찾는다</h2>
-          <p>오른쪽 후보 화면을 보고, 제목이 바뀌었는지 목록이 추가됐는지 비교합니다.</p>
-        </article>
-        <article class="story-card">
-          <span class="story-card__step">3단계</span>
-          <h2>실제 화면에는 필요한 만큼만 반영한다</h2>
-          <p>반영 버튼을 누르면 바뀐 부분만 왼쪽 실제 화면에 적용되고 이력에도 저장됩니다.</p>
-        </article>
-      </section>
 
       <!-- MOD: 버튼과 상태 카드를 초심자 친화적인 문장으로 다시 정리 -->
       <section class="toolbar">
         <div class="toolbar__buttons">
-          <button id="patch-button" class="button button--primary" type="button">변화 반영</button>
-          <button id="undo-button" class="button" type="button" disabled>이전 상태</button>
-          <button id="redo-button" class="button" type="button" disabled>다음 상태</button>
-          <button id="reset-button" class="button button--subtle" type="button">처음 샘플로</button>
+          <div class="toolbar__main-actions">
+            <button id="patch-button" class="button button--primary" type="button">변화 반영</button>
+            <button id="undo-button" class="button" type="button" disabled>이전 상태</button>
+            <button id="redo-button" class="button" type="button" disabled>다음 상태</button>
+            <button id="reset-button" class="button button--subtle" type="button">처음 샘플로</button>
+          </div>
+
+          <!-- MOD: 발표용 빠른 시나리오 버튼을 상단 조작 버튼 영역으로 이동 -->
+          <div class="toolbar__scenario-actions">
+            <button class="chip-button" type="button" data-scenario="text">제목만 바꾸기</button>
+            <button class="chip-button" type="button" data-scenario="props">속성만 바꾸기</button>
+            <button class="chip-button" type="button" data-scenario="add">목록 1개 추가</button>
+            <button class="chip-button" type="button" data-scenario="remove">목록 1개 삭제</button>
+            <button class="chip-button" type="button" data-scenario="replace">루트 태그 바꾸기</button>
+            <button class="chip-button chip-button--secondary" type="button" data-scenario="sync">
+              현재 실제 화면 불러오기
+            </button>
+          </div>
+
+          <p id="scenario-message" class="visually-hidden">
+            발표 전에 시나리오 버튼을 눌러 “오른쪽 후보 화면”을 빠르게 준비할 수 있습니다.
+          </p>
         </div>
 
         <div class="metric-grid">
@@ -85,37 +57,10 @@
         </div>
       </section>
 
-      <!-- MOD: 발표 중 오타 없이 핵심 케이스를 재현하는 프리셋 시나리오 -->
-      <section class="panel scenario-panel">
-        <div class="panel__header panel__header--tight">
-          <div>
-            <h2>발표용 빠른 시나리오</h2>
-            <p>모르는 사람에게 보여줄 때는 한 번에 하나의 변화만 보여주는 것이 가장 쉽습니다.</p>
-          </div>
-          <p class="panel__meta">프리셋은 현재 실제 화면을 기준으로 다음 초안을 자동으로 만듭니다.</p>
-        </div>
-
-        <div class="scenario-buttons">
-          <button class="chip-button" type="button" data-scenario="text">제목만 바꾸기</button>
-          <button class="chip-button" type="button" data-scenario="props">속성만 바꾸기</button>
-          <button class="chip-button" type="button" data-scenario="add">목록 1개 추가</button>
-          <button class="chip-button" type="button" data-scenario="remove">목록 1개 삭제</button>
-          <button class="chip-button" type="button" data-scenario="replace">루트 태그 바꾸기</button>
-          <button class="chip-button chip-button--secondary" type="button" data-scenario="sync">
-            현재 실제 화면 불러오기
-          </button>
-        </div>
-
-        <p id="scenario-message" class="scenario-note">
-          발표 전에 시나리오 버튼을 눌러 “오른쪽 후보 화면”을 빠르게 준비할 수 있습니다.
-        </p>
-      </section>
-
       <main class="workspace">
         <section class="panel">
           <div class="panel__header">
             <h2>1. 지금 실제 화면</h2>
-            <p>메인 페이지 안에 들어 있는 독립 웹페이지입니다. 변화 반영이 성공할 때만 바뀝니다.</p>
           </div>
 
           <!-- MOD: 메인 페이지 안에 실제 화면 전용 웹페이지를 넣기 위한 iframe -->
@@ -139,7 +84,6 @@
         <section class="panel">
           <div class="panel__header">
             <h2>2. 다음으로 바뀔 후보 화면</h2>
-            <p>메인 페이지 안에 들어 있는 또 다른 독립 웹페이지입니다. 실제 반영 전 비교용으로만 사용됩니다.</p>
           </div>
 
           <!-- MOD: 메인 페이지 안에 후보 화면 전용 웹페이지를 넣기 위한 iframe -->
@@ -160,40 +104,65 @@
       <section class="insight-grid">
         <section class="panel panel--editor">
           <div class="panel__header">
-            <h2>3. 직접 수정해 보기</h2>
-            <p>원하는 HTML을 적으면 오른쪽 후보 화면이 먼저 바뀌고, 변화 반영 버튼을 눌러야 왼쪽에 반영됩니다.</p>
+            <h2>3. 읽기 쉬운 항목으로 수정하기</h2>
+            <p>코드를 직접 고치지 않고, 제목과 요소처럼 읽기 쉬운 항목만 바꿔도 오른쪽 후보 화면이 먼저 달라집니다.</p>
           </div>
 
-          <label class="editor-label" for="html-input">다음 화면 HTML 코드</label>
-          <textarea id="html-input" class="editor-textarea" spellcheck="false"></textarea>
+          <!-- MOD: HTML 코드 편집 대신 사람이 읽기 쉬운 항목형 입력 폼으로 변경 -->
+          <div class="editor-form">
+            <label class="field-group" for="field-title">
+              <span class="field-group__label">제목</span>
+              <input id="field-title" class="field-input" type="text" placeholder="예: 바나나" />
+            </label>
+
+            <label class="field-group" for="field-description">
+              <span class="field-group__label">설명</span>
+              <input
+                id="field-description"
+                class="field-input"
+                type="text"
+                placeholder="예: 오늘 오후 6시 전에 주문하면 내일 오전 출고 예정입니다."
+              />
+            </label>
+
+            <label class="field-group field-group--wide" for="field-items">
+              <span class="field-group__label">요소</span>
+              <textarea
+                id="field-items"
+                class="field-input field-input--textarea"
+                spellcheck="false"
+                placeholder="한 줄에 하나씩 입력하세요.&#10;예: 사과칩 2개"
+              ></textarea>
+            </label>
+
+            <label class="field-group" for="field-root-tag">
+              <span class="field-group__label">태그</span>
+              <select id="field-root-tag" class="field-input field-input--select">
+                <option value="section">section</option>
+                <option value="article">article</option>
+              </select>
+            </label>
+
+            <label class="field-group" for="field-theme">
+              <span class="field-group__label">스타일</span>
+              <select id="field-theme" class="field-input field-input--select">
+                <option value="mint">민트</option>
+                <option value="berry">베리</option>
+              </select>
+            </label>
+
+            <label class="field-group" for="field-badge">
+              <span class="field-group__label">배지 문구</span>
+              <input id="field-badge" class="field-input" type="text" placeholder="예: 오늘 준비됨" />
+            </label>
+          </div>
 
           <div class="editor-meta">
             <p id="validation-message" class="form-note" data-state="ok">
               초기 DOM을 로드하는 중입니다.
             </p>
             <p class="form-hint">
-              맨 바깥 요소는 1개만 허용됩니다. 공백만 있는 글자와 주석은 자동으로 제외됩니다.
-            </p>
-          </div>
-        </section>
-
-        <!-- MOD: raw JSON보다 먼저 사람 말로 현재 상태를 설명하는 패널 -->
-        <section class="panel panel--explain">
-          <div class="panel__header">
-            <h2>컴퓨터가 찾은 변화</h2>
-            <p>개발 용어가 익숙하지 않아도 따라올 수 있도록 사람 말로 먼저 설명합니다.</p>
-          </div>
-
-          <p id="story-status" class="story-status">
-            지금은 초기 화면을 준비하는 단계입니다.
-          </p>
-
-          <ul id="change-summary-list" class="change-summary-list"></ul>
-
-          <div class="speaker-note">
-            <span class="speaker-note__label">발표 멘트 예시</span>
-            <p id="speaker-note">
-              “오른쪽은 다음 후보 화면이고, 변화 반영을 누르면 왼쪽 실제 화면에 바뀐 부분만 반영됩니다.”
+              제목, 요소, 태그를 바꾸면 오른쪽 후보 화면이 먼저 바뀌고, 변화 반영을 눌러야 왼쪽 실제 화면에 적용됩니다.
             </p>
           </div>
         </section>
@@ -205,12 +174,6 @@
           <summary>기술 로그 보기</summary>
           <p class="tech-card__hint">반영 작업 원본을 보고 싶은 사람을 위한 영역입니다.</p>
           <pre id="patch-log" class="code-box">[상태] 초기화를 기다리는 중입니다.</pre>
-        </details>
-
-        <details class="tech-card">
-          <summary>가상 DOM JSON 보기</summary>
-          <p class="tech-card__hint">현재 정규화된 가상 DOM 스냅샷을 그대로 보여줍니다.</p>
-          <pre id="vdom-preview" class="code-box">{}</pre>
         </details>
       </section>
 
