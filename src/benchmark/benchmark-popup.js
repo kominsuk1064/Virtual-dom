@@ -18,7 +18,6 @@ import { applyPatchesMapped } from "../optimized/patch-mapped.js";
 let overlayEl = null;
 let currentScenario = null;
 let isBenchmarkRunning = false;
-let domApiMode = "custom"; // "custom" = 우리 vdomToDom, "native" = 브라우저 innerHTML
 let lastRunTime = 0; // 버튼 쿨다운용 (1.5초 인터벌)
 const RUN_COOLDOWN_MS = 1500;
 
@@ -29,22 +28,54 @@ let vdomTimeMs = null;
 // DOM 참조 캐시
 const refs = {};
 
-/** VDOM → HTML 문자열 변환 (브라우저 innerHTML 벤치마크용) */
-function vdomToHtml(vnode) {
-  if (!vnode) return "";
-  if (vnode.type === "#text") return escapeHtml(vnode.text ?? "");
+/**
+ * 나이브 DOM 순회 갱신 — 프레임워크 없이 수동으로 DOM을 비교·갱신하는 방식.
+ * 위치(index) 기반으로 기존 DOM 트리를 새 VDOM과 비교하고,
+ * 다른 부분만 textContent/속성 변경, 노드 추가/삭제를 수행한다.
+ * key 최적화 없음, MOVE 없음 — "순수 수동 DOM 조작"의 현실적 비용을 측정한다.
+ */
+function naiveDomUpdate(domNode, newVdom) {
+  if (!domNode || !newVdom) return;
 
-  const attrs = Object.entries(vnode.props ?? {})
-    .filter(([k]) => k !== "key")
-    .map(([k, v]) => ` ${k}="${escapeHtml(String(v))}"`)
-    .join("");
+  // 텍스트 노드
+  if (newVdom.type === "#text") {
+    if (domNode.nodeType === 3) {
+      if (domNode.textContent !== newVdom.text) {
+        domNode.textContent = newVdom.text;
+      }
+    }
+    return;
+  }
 
-  const children = (vnode.children ?? []).map(vdomToHtml).join("");
-  return `<${vnode.type}${attrs}>${children}</${vnode.type}>`;
-}
+  // 속성 갱신
+  if (newVdom.props) {
+    for (const [key, val] of Object.entries(newVdom.props)) {
+      if (key === "key") continue;
+      const strVal = String(val);
+      if (domNode.getAttribute(key) !== strVal) {
+        domNode.setAttribute(key, strVal);
+      }
+    }
+  }
 
-function escapeHtml(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  // 자식 재귀 비교
+  const existingChildren = domNode.childNodes;
+  const newChildren = newVdom.children ?? [];
+  const minLen = Math.min(existingChildren.length, newChildren.length);
+
+  for (let i = 0; i < minLen; i++) {
+    naiveDomUpdate(existingChildren[i], newChildren[i]);
+  }
+
+  // 부족한 자식 추가
+  for (let i = existingChildren.length; i < newChildren.length; i++) {
+    domNode.appendChild(vdomToDom(newChildren[i]));
+  }
+
+  // 초과 자식 제거
+  while (domNode.childNodes.length > newChildren.length) {
+    domNode.removeChild(domNode.lastChild);
+  }
 }
 
 /* ────────────────────────────────
@@ -81,13 +112,9 @@ function buildPopupDOM() {
         <div class="bench-panel bench-panel--dom">
           <div class="bench-panel__header">
             <span class="bench-panel__label">DOM</span>
-            <div class="bench-api-toggle" data-ref="domApiToggle">
-              <button type="button" class="bench-api-btn is-active" data-api="custom">우리 DOM API</button>
-              <button type="button" class="bench-api-btn" data-api="native">브라우저 innerHTML</button>
-            </div>
             <span class="bench-timer" data-ref="domTimer">⏱ 대기 중</span>
             <button type="button" class="bench-run-btn" data-ref="domRunBtn">▶ 실행</button>
-            <span class="bench-panel__sublabel" data-ref="domSublabel">createElement + appendChild</span>
+            <span class="bench-panel__sublabel">수동 DOM 순회 — 위치 기반 비교 + 부분 갱신</span>
           </div>
           <div class="bench-browser">
             <div class="bench-browser__bar">
@@ -249,17 +276,14 @@ function validateNodeCount(scenario) {
 
 function renderInitialDOM(container, vdom) {
   container.replaceChildren();
-  if (domApiMode === "native") {
-    container.innerHTML = vdomToHtml(vdom);
-  } else {
-    const dom = vdomToDom(vdom);
-    container.appendChild(dom);
-  }
+  const dom = vdomToDom(vdom);
+  container.appendChild(dom);
 }
 
 /**
- * DOM 방식 벤치마크: 전체 파괴 후 DOM API로 재구축
- * (실제 프레임워크 없이 상태 변경 시의 "나이브" 접근)
+ * DOM 방식 벤치마크: 수동 DOM 순회 + 부분 갱신 (공정 비교)
+ * 기존 DOM 트리를 새 VDOM과 위치 기반으로 비교하여 다른 부분만 수정한다.
+ * key 최적화 없음 — 프레임워크 없는 "수동 DOM 조작"의 현실적 비용.
  */
 async function runDOMBenchmark() {
   const now = Date.now();
@@ -288,19 +312,11 @@ async function runDOMBenchmark() {
 
   timer.textContent = "⏱ 측정 중…";
 
-  // innerHTML 모드: HTML 문자열 생성은 측정 밖 (순수 DOM 구축 비용만 비교)
-  const htmlStr = domApiMode === "native" ? vdomToHtml(modifiedVdom) : null;
-
+  // 나이브 DOM 순회: 기존 DOM과 새 VDOM을 위치 기반으로 비교·갱신
   const t0 = performance.now();
-
-  if (domApiMode === "native") {
-    // 브라우저 innerHTML: HTML 파서가 전체 트리를 파싱·구축
-    container.innerHTML = htmlStr;
-  } else {
-    // 우리 DOM API: createElement + appendChild로 전체 재구축
-    container.replaceChildren();
-    const newDom = vdomToDom(modifiedVdom);
-    container.appendChild(newDom);
+  const rootDom = container.firstChild;
+  if (rootDom) {
+    naiveDomUpdate(rootDom, modifiedVdom);
   }
 
   // 강제 리플로우를 유발하여 실제 렌더링 비용 포함
@@ -309,8 +325,7 @@ async function runDOMBenchmark() {
 
   domTimeMs = t1 - t0;
 
-  const modeLabel = domApiMode === "native" ? "innerHTML" : "DOM API";
-  timer.textContent = `⏱ ${domTimeMs.toFixed(2)}ms (${modeLabel})`;
+  timer.textContent = `⏱ ${domTimeMs.toFixed(2)}ms (수동 순회)`;
   timer.classList.add("is-done");
   btn.classList.remove("is-running");
   btn.disabled = false;
@@ -490,24 +505,6 @@ export function openBenchmarkPopup() {
   refs.domRunBtn.addEventListener("click", runDOMBenchmark);
   refs.vdomRunBtn.addEventListener("click", runVDOMBenchmark);
   refs.runBothBtn.addEventListener("click", runBothBenchmarks);
-
-  // DOM API 모드 토글
-  refs.domApiToggle.querySelectorAll(".bench-api-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (isBenchmarkRunning) return;
-      domApiMode = btn.dataset.api;
-      refs.domApiToggle.querySelectorAll(".bench-api-btn").forEach((b) =>
-        b.classList.toggle("is-active", b.dataset.api === domApiMode)
-      );
-      refs.domSublabel.textContent =
-        domApiMode === "native" ? "innerHTML (브라우저 HTML 파서)" : "createElement + appendChild";
-      // 미리보기 갱신
-      if (currentScenario) {
-        const params = getCurrentParams(currentScenario);
-        renderInitialDOM(refs.domContent, currentScenario.generateInitial(params));
-      }
-    });
-  });
 
   // 첫 시나리오 자동 선택
   selectScenario(scenarios[0].id);

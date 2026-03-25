@@ -123,7 +123,7 @@ export const scenarios = [
     icon: "📝",
     description: "리스트 중 일부만 텍스트 변경",
     params: [
-      { key: "count", label: "항목 수", default: 3000, min: 10, max: 50000, step: 100 },
+      { key: "count", label: "항목 수", default: 3000, min: 10, max: 100000, step: 100 },
       { key: "changeRatio", label: "변경 비율(%)", default: 5, min: 1, max: 100, step: 1 },
     ],
     estimateNodes: ({ count }) => count + 1,
@@ -136,8 +136,8 @@ export const scenarios = [
     icon: "➕",
     description: "리스트 중간에 항목 삽입",
     params: [
-      { key: "count", label: "전체 항목 수", default: 1000, min: 10, max: 50000, step: 100 },
-      { key: "insertCount", label: "삽입 항목 수", default: 100, min: 10, max: 5000, step: 10 },
+      { key: "count", label: "전체 항목 수", default: 1000, min: 10, max: 100000, step: 100 },
+      { key: "insertCount", label: "삽입 항목 수", default: 100, min: 10, max: 10000, step: 10 },
     ],
     estimateNodes: ({ count, insertCount }) => count + insertCount + 1,
     generateInitial: ({ count }) => middleInsertInitial(count),
@@ -150,7 +150,7 @@ export const scenarios = [
     icon: "🔄",
     description: "모든 요소의 class/data 속성 일괄 변경",
     params: [
-      { key: "count", label: "요소 수", default: 1000, min: 10, max: 50000, step: 100 },
+      { key: "count", label: "요소 수", default: 1000, min: 10, max: 100000, step: 100 },
     ],
     estimateNodes: ({ count }) => count + 1,
     generateInitial: ({ count }) => propsToggleInitial(count),
