@@ -18,6 +18,7 @@ import { applyPatchesMapped } from "../optimized/patch-mapped.js";
 let overlayEl = null;
 let currentScenario = null;
 let isBenchmarkRunning = false;
+let domApiMode = "custom"; // "custom" = 우리 vdomToDom, "native" = 브라우저 innerHTML
 
 // 타이밍 결과 저장
 let domTimeMs = null;
@@ -25,6 +26,24 @@ let vdomTimeMs = null;
 
 // DOM 참조 캐시
 const refs = {};
+
+/** VDOM → HTML 문자열 변환 (브라우저 innerHTML 벤치마크용) */
+function vdomToHtml(vnode) {
+  if (!vnode) return "";
+  if (vnode.type === "#text") return escapeHtml(vnode.text ?? "");
+
+  const attrs = Object.entries(vnode.props ?? {})
+    .filter(([k]) => k !== "key")
+    .map(([k, v]) => ` ${k}="${escapeHtml(String(v))}"`)
+    .join("");
+
+  const children = (vnode.children ?? []).map(vdomToHtml).join("");
+  return `<${vnode.type}${attrs}>${children}</${vnode.type}>`;
+}
+
+function escapeHtml(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
 /* ────────────────────────────────
    팝업 DOM 생성
@@ -60,7 +79,11 @@ function buildPopupDOM() {
         <div class="bench-panel bench-panel--dom">
           <div class="bench-panel__header">
             <span class="bench-panel__label">DOM</span>
-            <span class="bench-panel__sublabel">전체 파괴 후 DOM API 재구축</span>
+            <div class="bench-api-toggle" data-ref="domApiToggle">
+              <button class="bench-api-btn is-active" data-api="custom">우리 DOM API</button>
+              <button class="bench-api-btn" data-api="native">브라우저 innerHTML</button>
+            </div>
+            <span class="bench-panel__sublabel" data-ref="domSublabel">createElement + appendChild</span>
             <span class="bench-timer" data-ref="domTimer">⏱ 대기 중</span>
             <button class="bench-run-btn" data-ref="domRunBtn">▶ 실행</button>
           </div>
@@ -200,9 +223,12 @@ function validateNodeCount(scenario) {
 
 function renderInitialDOM(container, vdom) {
   container.replaceChildren();
-  const dom = vdomToDom(vdom);
-  container.appendChild(dom);
-  return dom;
+  if (domApiMode === "native") {
+    container.innerHTML = vdomToHtml(vdom);
+  } else {
+    const dom = vdomToDom(vdom);
+    container.appendChild(dom);
+  }
 }
 
 /**
@@ -234,11 +260,17 @@ async function runDOMBenchmark() {
 
   timer.textContent = "⏱ 측정 중…";
 
-  // DOM API로 전체 트리 파괴 → 재구축 (innerHTML이 아닌 createElement/appendChild)
   const t0 = performance.now();
-  container.replaceChildren();
-  const newDom = vdomToDom(modifiedVdom);
-  container.appendChild(newDom);
+
+  if (domApiMode === "native") {
+    // 브라우저 innerHTML: HTML 파서가 전체 트리를 파싱·구축
+    container.innerHTML = vdomToHtml(modifiedVdom);
+  } else {
+    // 우리 DOM API: createElement + appendChild로 전체 재구축
+    container.replaceChildren();
+    const newDom = vdomToDom(modifiedVdom);
+    container.appendChild(newDom);
+  }
 
   // 강제 리플로우를 유발하여 실제 렌더링 비용 포함
   void container.offsetHeight;
@@ -246,7 +278,8 @@ async function runDOMBenchmark() {
 
   domTimeMs = t1 - t0;
 
-  timer.textContent = `⏱ ${domTimeMs.toFixed(2)}ms`;
+  const modeLabel = domApiMode === "native" ? "innerHTML" : "DOM API";
+  timer.textContent = `⏱ ${domTimeMs.toFixed(2)}ms (${modeLabel})`;
   timer.classList.add("is-done");
   btn.classList.remove("is-running");
   btn.disabled = false;
@@ -419,6 +452,24 @@ export function openBenchmarkPopup() {
   refs.domRunBtn.addEventListener("click", runDOMBenchmark);
   refs.vdomRunBtn.addEventListener("click", runVDOMBenchmark);
   refs.runBothBtn.addEventListener("click", runBothBenchmarks);
+
+  // DOM API 모드 토글
+  refs.domApiToggle.querySelectorAll(".bench-api-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (isBenchmarkRunning) return;
+      domApiMode = btn.dataset.api;
+      refs.domApiToggle.querySelectorAll(".bench-api-btn").forEach((b) =>
+        b.classList.toggle("is-active", b.dataset.api === domApiMode)
+      );
+      refs.domSublabel.textContent =
+        domApiMode === "native" ? "innerHTML (브라우저 HTML 파서)" : "createElement + appendChild";
+      // 미리보기 갱신
+      if (currentScenario) {
+        const params = getCurrentParams(currentScenario);
+        renderInitialDOM(refs.domContent, currentScenario.generateInitial(params));
+      }
+    });
+  });
 
   // 첫 시나리오 자동 선택
   selectScenario(scenarios[0].id);

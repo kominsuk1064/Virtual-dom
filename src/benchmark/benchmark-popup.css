@@ -196,6 +196,35 @@
   font-size: 11px;
   color: #64748b;
 }
+
+/* DOM API 토글 */
+.bench-api-toggle {
+  display: flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 2px;
+}
+.bench-api-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #64748b;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.bench-api-btn:hover {
+  color: #94a3b8;
+}
+.bench-api-btn.is-active {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+  font-weight: 600;
+}
+
 .bench-run-btn {
   margin-left: auto;
   padding: 6px 18px;
