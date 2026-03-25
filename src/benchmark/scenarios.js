@@ -116,29 +116,7 @@ function deepTreeModified(depth = 5, breadth = 4) {
   return buildDeepTree(depth, breadth, "Changed");
 }
 
-// S5: 리스트 셔플 (Fisher-Yates)
-function shuffleInitial(count = 500) {
-  const children = [];
-  for (let i = 0; i < count; i++) {
-    children.push(makeLi(`Item ${i}`, `item-${i}`));
-  }
-  return { type: "ul", props: { class: "bench-list" }, children };
-}
-
-function shuffleModified(count = 500) {
-  const indices = Array.from({ length: count }, (_, i) => i);
-  // Fisher-Yates 시드 고정 셔플 (벤치마크 재현성)
-  let seed = 42;
-  for (let i = indices.length - 1; i > 0; i--) {
-    seed = (seed * 1664525 + 1013904223) & 0x7fffffff;
-    const j = seed % (i + 1);
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
-  const children = indices.map((idx) => makeLi(`Item ${idx}`, `item-${idx}`));
-  return { type: "ul", props: { class: "bench-list" }, children };
-}
-
-// S6: 부분 삭제 (중간 영역 제거)
+// S5: 부분 삭제 (중간 영역 제거)
 function partialDeleteInitial(count = 1000) {
   const children = [];
   for (let i = 0; i < count; i++) {
@@ -185,18 +163,6 @@ export const scenarios = [
     generateInitial: ({ count }) => middleInsertInitial(count),
     generateModified: ({ count, insertCount }) =>
       middleInsertModified(count, Math.min(insertCount, count)),
-  },
-  {
-    id: "shuffle",
-    name: "셔플",
-    icon: "🔀",
-    description: "리스트 전체 순서를 무작위로 재배치",
-    params: [
-      { key: "count", label: "항목 수", default: 1000, min: 10, max: 100000, step: 100 },
-    ],
-    estimateNodes: ({ count }) => count + 1,
-    generateInitial: ({ count }) => shuffleInitial(count),
-    generateModified: ({ count }) => shuffleModified(count),
   },
   {
     id: "partial-delete",
