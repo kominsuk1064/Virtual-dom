@@ -28,6 +28,8 @@ const patchButton = document.querySelector("#patch-button");
 const undoButton = document.querySelector("#undo-button");
 const redoButton = document.querySelector("#redo-button");
 const resetButton = document.querySelector("#reset-button");
+const historyJumpSelect = document.querySelector("#history-jump-select");
+const historyJumpButton = document.querySelector("#history-jump-button");
 const patchLog = document.querySelector("#patch-log");
 const directCodeEditor = document.querySelector("#direct-code-editor");
 const directCodeMessage = document.querySelector("#direct-code-message");
@@ -294,6 +296,7 @@ function setDirectCodeMessage(valid, message) {
 function updateStatus(statusLabel) {
   stateIndicator.textContent = statusLabel;
   historyIndicator.textContent = history.length ? `${historyIndex + 1} / ${history.length}` : "0 / 0";
+  syncHistoryJumpControls();
 
   if (pendingPatches.length > 0) {
     patchCount.textContent = `${pendingPatches.length} 예정`;
@@ -312,6 +315,59 @@ function updateButtonState() {
   undoButton.disabled = historyIndex <= 0;
   redoButton.disabled = historyIndex >= history.length - 1;
   resetButton.disabled = history.length === 1 && historyIndex === 0;
+  updateHistoryJumpActionState();
+}
+
+/**
+ * Keep the snapshot selector aligned with the saved history.
+ */
+function syncHistoryJumpControls() {
+  if (!historyJumpSelect) {
+    return;
+  }
+
+  historyJumpSelect.replaceChildren();
+
+  if (!history.length) {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "저장된 스냅샷 없음";
+    historyJumpSelect.append(placeholder);
+    historyJumpSelect.value = "";
+    historyJumpSelect.disabled = true;
+    updateHistoryJumpActionState();
+    return;
+  }
+
+  history.forEach((_, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = index === historyIndex ? `스냅샷 ${index + 1} (현재)` : `스냅샷 ${index + 1}`;
+    historyJumpSelect.append(option);
+  });
+
+  historyJumpSelect.value = String(Math.max(historyIndex, 0));
+  historyJumpSelect.disabled = history.length <= 1;
+  updateHistoryJumpActionState();
+}
+
+/**
+ * Enable the direct snapshot jump button only when a different target is selected.
+ */
+function updateHistoryJumpActionState() {
+  if (!historyJumpButton || !historyJumpSelect) {
+    return;
+  }
+
+  const selectedIndex = Number.parseInt(historyJumpSelect.value, 10);
+  const canJump =
+    history.length > 1 &&
+    !Number.isNaN(selectedIndex) &&
+    selectedIndex >= 0 &&
+    selectedIndex < history.length &&
+    selectedIndex !== historyIndex;
+
+  historyJumpButton.disabled = !canJump;
 }
 
 /**
@@ -1375,45 +1431,68 @@ function handlePatch() {
 }
 
 /**
- * Move to the previous history state.
+ * Restore a saved snapshot from history and sync both boards to it.
  */
-function handleUndo() {
-  if (historyIndex <= 0) {
+function restoreHistorySnapshot(nextIndex, logTitle, detailLine, statusLabel) {
+  if (nextIndex < 0 || nextIndex >= history.length || nextIndex === historyIndex) {
+    updateHistoryJumpActionState();
     return;
   }
 
-  historyIndex -= 1;
+  historyIndex = nextIndex;
   lastPatchCount = 0;
   syncBothAreasFromVdom(history[historyIndex]);
   currentVDOM = cloneVdom(history[historyIndex]);
   nodeMap = new WeakMap();
 
-  renderPatchLog("이전 상태 복원 완료", [], [
+  renderPatchLog(logTitle, [], [
     `[이력 위치] ${historyIndex + 1} / ${history.length}`,
-    "[동기화] 저장된 이전 보드를 기준으로 현재 보드와 가설 보드를 다시 렌더했습니다."
+    detailLine
   ]);
-  updateStatus("이전 보드 복원");
+  updateStatus(statusLabel);
+}
+
+/**
+ * Move to the previous history state.
+ */
+function handleUndo() {
+  restoreHistorySnapshot(
+    historyIndex - 1,
+    "이전 상태 복원 완료",
+    "[동기화] 저장된 이전 보드를 기준으로 현재 보드와 가설 보드를 다시 렌더했습니다.",
+    "이전 보드 복원"
+  );
 }
 
 /**
  * Move to the next history state.
  */
 function handleRedo() {
-  if (historyIndex >= history.length - 1) {
+  restoreHistorySnapshot(
+    historyIndex + 1,
+    "다음 상태 복원 완료",
+    "[동기화] 저장된 다음 보드를 기준으로 현재 보드와 가설 보드를 다시 렌더했습니다.",
+    "다음 보드 복원"
+  );
+}
+
+/**
+ * Move directly to the selected snapshot index.
+ */
+function handleHistoryJump() {
+  const nextIndex = Number.parseInt(historyJumpSelect?.value ?? "", 10);
+
+  if (Number.isNaN(nextIndex)) {
+    updateHistoryJumpActionState();
     return;
   }
 
-  historyIndex += 1;
-  lastPatchCount = 0;
-  syncBothAreasFromVdom(history[historyIndex]);
-  currentVDOM = cloneVdom(history[historyIndex]);
-  nodeMap = new WeakMap();
-
-  renderPatchLog("다음 상태 복원 완료", [], [
-    `[이력 위치] ${historyIndex + 1} / ${history.length}`,
-    "[동기화] 저장된 다음 보드를 기준으로 현재 보드와 가설 보드를 다시 렌더했습니다."
-  ]);
-  updateStatus("다음 보드 복원");
+  restoreHistorySnapshot(
+    nextIndex,
+    "선택한 스냅샷 복원 완료",
+    `[동기화] 저장된 스냅샷 ${nextIndex + 1}번을 기준으로 현재 보드와 가설 보드를 다시 렌더했습니다.`,
+    `스냅샷 ${nextIndex + 1} 복원`
+  );
 }
 
 /**
@@ -1544,6 +1623,10 @@ async function bootstrap() {
     });
   });
 
+  historyJumpSelect?.addEventListener("change", () => {
+    updateHistoryJumpActionState();
+  });
+  historyJumpButton?.addEventListener("click", handleHistoryJump);
   patchButton.addEventListener("click", handlePatch);
   undoButton.addEventListener("click", handleUndo);
   redoButton.addEventListener("click", handleRedo);
