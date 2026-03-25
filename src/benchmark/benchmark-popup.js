@@ -8,7 +8,7 @@
 import { vdomToDom, domToVdom, cloneVdom } from "../vdom.js";
 import { diff } from "../diff.js";
 import { applyPatches } from "../patch.js";
-import { scenarios } from "./scenarios.js";
+import { scenarios, estimateNodeCount, NODE_LIMIT } from "./scenarios.js";
 
 // 최적화 모듈 (src/optimized/ 삭제 시 이 3줄 + runVDOMBenchmark 내부만 원복)
 import { vdomToDomMapped } from "../optimized/vdom-mapped.js";
@@ -17,6 +17,7 @@ import { applyPatchesMapped } from "../optimized/patch-mapped.js";
 
 let overlayEl = null;
 let currentScenario = null;
+let isBenchmarkRunning = false;
 
 // 타이밍 결과 저장
 let domTimeMs = null;
@@ -51,6 +52,8 @@ function buildPopupDOM() {
           .join("")}
         <span class="bench-scenario-desc" data-ref="scenarioDesc">${scenarios[0].description}</span>
       </div>
+
+      <div class="bench-params" data-ref="paramsContainer"></div>
 
       <div class="bench-body">
         <!-- DOM 패널 -->
@@ -117,6 +120,81 @@ function cacheRefs(overlay) {
 }
 
 /* ────────────────────────────────
+   파라미터 UI (Phase 4)
+   ──────────────────────────────── */
+
+function renderParamsUI(scenario) {
+  const container = refs.paramsContainer;
+  if (!scenario.params || scenario.params.length === 0) {
+    container.innerHTML = "";
+    container.classList.remove("has-params");
+    return;
+  }
+
+  container.classList.add("has-params");
+  container.innerHTML = scenario.params
+    .map(
+      (p) => `
+      <label class="bench-param">
+        <span class="bench-param__label">${p.label}</span>
+        <input class="bench-param__input"
+               type="number"
+               data-param="${p.key}"
+               value="${p.default}"
+               min="${p.min}" max="${p.max}" step="${p.step}" />
+      </label>`
+    )
+    .join("");
+
+  // 노드 폭발 경고 영역 (deep-tree 시나리오용)
+  if (scenario.estimateNodes) {
+    const warn = document.createElement("span");
+    warn.className = "bench-params__warning";
+    warn.dataset.ref = "nodeWarning";
+    container.appendChild(warn);
+    refs.nodeWarning = warn;
+    validateNodeCount(scenario);
+  }
+
+  // 파라미터 변경 시 유효성 검사 + 미리보기 갱신
+  container.querySelectorAll(".bench-param__input").forEach((input) => {
+    input.addEventListener("input", () => {
+      if (scenario.estimateNodes) validateNodeCount(scenario);
+    });
+  });
+}
+
+function getCurrentParams(scenario) {
+  const params = {};
+  if (!scenario.params) return params;
+  for (const p of scenario.params) {
+    const input = refs.paramsContainer.querySelector(`[data-param="${p.key}"]`);
+    const val = input ? Number(input.value) : p.default;
+    params[p.key] = Math.max(p.min, Math.min(p.max, val));
+  }
+  return params;
+}
+
+function validateNodeCount(scenario) {
+  const params = getCurrentParams(scenario);
+  const nodeCount = scenario.estimateNodes(params);
+  const warning = refs.nodeWarning;
+  const runButtons = [refs.domRunBtn, refs.vdomRunBtn, refs.runBothBtn];
+
+  if (nodeCount > NODE_LIMIT) {
+    const formatted = nodeCount.toLocaleString();
+    warning.textContent = `⚠️ 예상 노드 수 ${formatted}개 (한도: ${NODE_LIMIT.toLocaleString()}) — 실행 불가`;
+    warning.classList.add("is-over-limit");
+    runButtons.forEach((b) => (b.disabled = true));
+  } else {
+    const formatted = nodeCount.toLocaleString();
+    warning.textContent = `노드 수: ~${formatted}`;
+    warning.classList.remove("is-over-limit");
+    runButtons.forEach((b) => (b.disabled = false));
+  }
+}
+
+/* ────────────────────────────────
    벤치마크 실행 로직
    ──────────────────────────────── */
 
@@ -132,7 +210,8 @@ function renderInitialDOM(container, vdom) {
  * (실제 프레임워크 없이 상태 변경 시의 "나이브" 접근)
  */
 async function runDOMBenchmark() {
-  if (!currentScenario) return;
+  if (!currentScenario || isBenchmarkRunning) return;
+  isBenchmarkRunning = true;
 
   const btn = refs.domRunBtn;
   const timer = refs.domTimer;
@@ -143,8 +222,9 @@ async function runDOMBenchmark() {
   timer.textContent = "⏱ 초기화 중…";
   timer.classList.remove("is-done");
 
-  const initialVdom = currentScenario.generateInitial();
-  const modifiedVdom = currentScenario.generateModified();
+  const params = getCurrentParams(currentScenario);
+  const initialVdom = currentScenario.generateInitial(params);
+  const modifiedVdom = currentScenario.generateModified(params);
 
   // 초기 렌더링 (측정 대상 아님)
   renderInitialDOM(container, initialVdom);
@@ -170,6 +250,7 @@ async function runDOMBenchmark() {
   timer.classList.add("is-done");
   btn.classList.remove("is-running");
   btn.disabled = false;
+  isBenchmarkRunning = false;
 
   updateResultBar();
 }
@@ -179,7 +260,8 @@ async function runDOMBenchmark() {
  * (src/optimized/ 모듈 사용)
  */
 async function runVDOMBenchmark() {
-  if (!currentScenario) return;
+  if (!currentScenario || isBenchmarkRunning) return;
+  isBenchmarkRunning = true;
 
   const btn = refs.vdomRunBtn;
   const timer = refs.vdomTimer;
@@ -190,8 +272,9 @@ async function runVDOMBenchmark() {
   timer.textContent = "⏱ 초기화 중…";
   timer.classList.remove("is-done");
 
-  const initialVdom = currentScenario.generateInitial();
-  const modifiedVdom = currentScenario.generateModified();
+  const params = getCurrentParams(currentScenario);
+  const initialVdom = currentScenario.generateInitial(params);
+  const modifiedVdom = currentScenario.generateModified(params);
 
   // 초기 렌더링 — vdomToDomMapped로 WeakMap 동시 구축 (측정 대상 아님)
   const nodeMap = new WeakMap();
@@ -227,6 +310,7 @@ async function runVDOMBenchmark() {
   timer.classList.add("is-done");
   btn.classList.remove("is-running");
   btn.disabled = false;
+  isBenchmarkRunning = false;
 
   updateResultBar();
 }
@@ -266,6 +350,7 @@ function updateResultBar() {
    ──────────────────────────────── */
 
 function selectScenario(id) {
+  if (isBenchmarkRunning) return;
   const scenario = scenarios.find((s) => s.id === id);
   if (!scenario) return;
 
@@ -285,8 +370,12 @@ function selectScenario(id) {
   refs.vdomTimer.classList.remove("is-done");
   refs.resultText.textContent = "";
 
+  // 파라미터 UI 렌더링
+  renderParamsUI(scenario);
+
   // 초기 상태 미리보기
-  const initialVdom = scenario.generateInitial();
+  const params = getCurrentParams(scenario);
+  const initialVdom = scenario.generateInitial(params);
   renderInitialDOM(refs.domContent, initialVdom);
   renderInitialDOM(refs.vdomContent, initialVdom);
 }

@@ -8,8 +8,17 @@
  * 제거 방법: 이 파일과 src/optimized/ 폴더를 삭제하면 된다.
  */
 
-import { vdomToDom } from "../vdom.js";
+import { vdomToDomMapped } from "./vdom-mapped.js";
 
+/**
+ * WeakMap O(1) 패치 적용.
+ * _ref/_parentRef로 대상 DOM을 조회하여 ADD/REMOVE/REPLACE/MOVE/PROPS_UPDATE/TEXT_UPDATE를 수행한다.
+ * nodeMap 조회 실패 시 해당 패치를 건너뛴다 (graceful skip).
+ * @param {Node} rootDom - 현재 렌더링된 루트 DOM 노드
+ * @param {Array} patches - diff가 생성한 패치 배열
+ * @param {WeakMap} nodeMap - vdomNode → domNode 매핑 (vdomToDomMapped가 구축)
+ * @returns {Node} 패치 적용 후 루트 DOM (REPLACE 시 교체될 수 있음)
+ */
 export function applyPatchesMapped(rootDom, patches, nodeMap) {
   let currentRoot = rootDom;
 
@@ -19,7 +28,7 @@ export function applyPatchesMapped(rootDom, patches, nodeMap) {
         const parent = patch._parentRef ? nodeMap.get(patch._parentRef) : null;
         if (!parent) break;
 
-        const newNode = vdomToDom(patch.node);
+        const newNode = vdomToDomMapped(patch.node, nodeMap);
         const ref = parent.childNodes[patch.index] ?? null;
         ref ? parent.insertBefore(newNode, ref) : parent.appendChild(newNode);
         break;
@@ -36,13 +45,23 @@ export function applyPatchesMapped(rootDom, patches, nodeMap) {
         const target = patch._ref ? nodeMap.get(patch._ref) : null;
         if (!target) break;
 
-        const replacement = vdomToDom(patch.node);
+        const replacement = vdomToDomMapped(patch.node, nodeMap);
         if (patch.path.length === 0) {
           if (currentRoot.parentNode) currentRoot.replaceWith(replacement);
           currentRoot = replacement;
         } else {
           target.replaceWith(replacement);
         }
+        break;
+      }
+
+      case "MOVE": {
+        const parent = patch._parentRef ? nodeMap.get(patch._parentRef) : null;
+        const child = patch._ref ? nodeMap.get(patch._ref) : null;
+        if (!parent || !child) break;
+
+        const ref = parent.childNodes[patch.to] ?? null;
+        parent.insertBefore(child, ref);
         break;
       }
 

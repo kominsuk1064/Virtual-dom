@@ -1,10 +1,11 @@
 import { getNodeByPath } from "../src/patch.js";
-import { vdomToDom } from "../src/vdom.js";
+import { vdomToDomMapped } from "../src/optimized/vdom-mapped.js";
 
 const sessionId = new URLSearchParams(window.location.search).get("session") ?? "standalone-preview";
 const channel = new BroadcastChannel(`virtual-dom-${sessionId}-preview`);
 const mount = document.querySelector("#site-render-root");
 let rootNode = null;
+let nodeMap = new WeakMap();
 
 function escapeHtml(value) {
   return String(value)
@@ -92,12 +93,13 @@ function applyPatchHighlights(node, patches) {
 function renderSnapshot(vdom, patches = []) {
   mount.replaceChildren();
   rootNode = null;
+  nodeMap = new WeakMap();
 
   if (!vdom) {
     return;
   }
 
-  rootNode = vdomToDom(vdom);
+  rootNode = vdomToDomMapped(vdom, nodeMap);
   mount.appendChild(rootNode);
 
   if (patches.length > 0) {
