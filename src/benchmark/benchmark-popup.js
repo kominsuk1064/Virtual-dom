@@ -19,6 +19,8 @@ let overlayEl = null;
 let currentScenario = null;
 let isBenchmarkRunning = false;
 let domApiMode = "custom"; // "custom" = 우리 vdomToDom, "native" = 브라우저 innerHTML
+let lastRunTime = 0; // 버튼 쿨다운용 (1.5초 인터벌)
+const RUN_COOLDOWN_MS = 1500;
 
 // 타이밍 결과 저장
 let domTimeMs = null;
@@ -179,8 +181,17 @@ function renderParamsUI(scenario) {
     validateNodeCount(scenario);
   }
 
-  // 파라미터 변경 시 유효성 검사 + 미리보기 갱신
+  // 파라미터 변경 시 유효성 검사 + 클램핑
   container.querySelectorAll(".bench-param__input").forEach((input) => {
+    input.addEventListener("change", () => {
+      const p = scenario.params.find((pp) => pp.key === input.dataset.param);
+      if (!p) return;
+      let v = Number(input.value);
+      if (isNaN(v) || v < p.min) v = p.min;
+      if (v > p.max) v = p.max;
+      input.value = v;
+      if (scenario.estimateNodes) validateNodeCount(scenario);
+    });
     input.addEventListener("input", () => {
       if (scenario.estimateNodes) validateNodeCount(scenario);
     });
@@ -192,8 +203,11 @@ function getCurrentParams(scenario) {
   if (!scenario.params) return params;
   for (const p of scenario.params) {
     const input = refs.paramsContainer.querySelector(`[data-param="${p.key}"]`);
-    const val = input ? Number(input.value) : p.default;
-    params[p.key] = Math.max(p.min, Math.min(p.max, val));
+    let val = input ? Number(input.value) : p.default;
+    if (isNaN(val)) val = p.default;
+    // 음수 방지 + 최소/최대 클램핑 (숫자 최소 10, 비율은 시나리오 min 준수)
+    val = Math.max(p.min, Math.min(p.max, val));
+    params[p.key] = val;
   }
   return params;
 }
@@ -203,6 +217,18 @@ function validateNodeCount(scenario) {
   const nodeCount = scenario.estimateNodes(params);
   const warning = refs.nodeWarning;
   const runButtons = [refs.domRunBtn, refs.vdomRunBtn, refs.runBothBtn];
+
+  // 비율 파라미터 100% 초과 경고
+  const ratioParam = scenario.params?.find((p) => p.key === "changeRatio");
+  if (ratioParam) {
+    const input = refs.paramsContainer.querySelector('[data-param="changeRatio"]');
+    if (input && Number(input.value) > 100) {
+      warning.textContent = "⚠️ 변경 비율은 100%를 초과할 수 없습니다";
+      warning.classList.add("is-over-limit");
+      runButtons.forEach((b) => (b.disabled = true));
+      return;
+    }
+  }
 
   if (nodeCount > NODE_LIMIT) {
     const formatted = nodeCount.toLocaleString();
@@ -236,8 +262,10 @@ function renderInitialDOM(container, vdom) {
  * (실제 프레임워크 없이 상태 변경 시의 "나이브" 접근)
  */
 async function runDOMBenchmark() {
-  if (!currentScenario || isBenchmarkRunning) return;
+  const now = Date.now();
+  if (!currentScenario || isBenchmarkRunning || now - lastRunTime < RUN_COOLDOWN_MS) return;
   isBenchmarkRunning = true;
+  lastRunTime = now;
 
   const btn = refs.domRunBtn;
   const timer = refs.domTimer;
@@ -296,8 +324,10 @@ async function runDOMBenchmark() {
  * (src/optimized/ 모듈 사용)
  */
 async function runVDOMBenchmark() {
-  if (!currentScenario || isBenchmarkRunning) return;
+  const now = Date.now();
+  if (!currentScenario || isBenchmarkRunning || now - lastRunTime < RUN_COOLDOWN_MS) return;
   isBenchmarkRunning = true;
+  lastRunTime = now;
 
   const btn = refs.vdomRunBtn;
   const timer = refs.vdomTimer;
@@ -370,15 +400,20 @@ function updateResultBar() {
   }
 
   const faster = domTimeMs > vdomTimeMs ? "VDOM" : "DOM";
-  const ratio =
+  let ratio =
     faster === "VDOM"
-      ? ((1 - vdomTimeMs / domTimeMs) * 100).toFixed(0)
-      : ((1 - domTimeMs / vdomTimeMs) * 100).toFixed(0);
+      ? (1 - vdomTimeMs / domTimeMs) * 100
+      : (1 - domTimeMs / vdomTimeMs) * 100;
+
+  // 음수 방지 + 100% 상한
+  ratio = Math.max(0, Math.min(100, ratio));
+
+  const ratioStr = ratio >= 100 ? "100% 초과 안됨" : `${ratio.toFixed(0)}% 빠름`;
 
   refs.resultText.innerHTML =
     `DOM <span class="dom-time">${domTimeMs.toFixed(2)}ms</span> vs ` +
     `VDOM <span class="vdom-time">${vdomTimeMs.toFixed(2)}ms</span>` +
-    `<span class="comparison">→ ${faster}이 ${ratio}% 빠름</span>`;
+    `<span class="comparison">→ ${faster}이 ${ratioStr}</span>`;
 }
 
 /* ────────────────────────────────
