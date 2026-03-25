@@ -217,6 +217,7 @@ select {
 }
 
 .toolbar__main-actions,
+.toolbar__history-actions,
 .toolbar__scenario-actions {
   display: flex;
   flex-wrap: wrap;
@@ -224,8 +225,48 @@ select {
   align-items: center;
 }
 
+.toolbar__history-actions {
+  padding: 12px 14px;
+  border: 1px solid rgba(98, 69, 53, 0.14);
+  border-radius: 10px;
+  background: rgba(255, 250, 242, 0.68);
+}
+
 .toolbar__scenario-actions {
   min-height: 52px;
+}
+
+.history-jump {
+  display: grid;
+  gap: 6px;
+  min-width: min(100%, 240px);
+}
+
+.history-jump__label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.history-jump__select {
+  min-width: 220px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 2px solid rgba(98, 69, 53, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 252, 246, 0.92);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.history-jump__select:focus {
+  outline: 2px solid rgba(143, 47, 34, 0.24);
+  outline-offset: 2px;
+  border-color: rgba(143, 47, 34, 0.36);
 }
 
 .button,
@@ -1004,6 +1045,19 @@ select {
   .scenario-buttons,
   .surface-legend {
     gap: 8px;
+  }
+
+  .toolbar__history-actions {
+    align-items: stretch;
+  }
+
+  .history-jump {
+    width: 100%;
+  }
+
+  .history-jump__select {
+    width: 100%;
+    min-width: 0;
   }
 
   .catalog-card__footer {

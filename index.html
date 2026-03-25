@@ -28,6 +28,18 @@
             <button id="reset-button" class="button button--subtle" type="button">초기 사건으로</button>
           </div>
 
+          <div class="toolbar__history-actions">
+            <label class="history-jump" for="history-jump-select">
+              <span class="history-jump__label">스냅샷 선택</span>
+              <select id="history-jump-select" class="history-jump__select" disabled>
+                <option value="0">스냅샷 1</option>
+              </select>
+            </label>
+            <button id="history-jump-button" class="button button--subtle" type="button" disabled>
+              선택한 스냅샷으로 이동
+            </button>
+          </div>
+
           <!-- MOD: 발표용 빠른 시나리오 버튼을 상단 조작 버튼 영역으로 이동 -->
           <div class="toolbar__scenario-actions">
             <button class="chip-button" type="button" data-scenario="text">사건명 바꾸기</button>
