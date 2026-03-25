@@ -245,12 +245,12 @@ function validateNodeCount(scenario) {
   const warning = refs.nodeWarning;
   const runButtons = [refs.domRunBtn, refs.vdomRunBtn, refs.runBothBtn];
 
-  // 비율 파라미터 100% 초과 경고
-  const ratioParam = scenario.params?.find((p) => p.key === "changeRatio");
+  // 비율 파라미터 100% 초과 경고 (changeRatio, deleteRatio 등)
+  const ratioParam = scenario.params?.find((p) => p.key.endsWith("Ratio"));
   if (ratioParam) {
-    const input = refs.paramsContainer.querySelector('[data-param="changeRatio"]');
-    if (input && Number(input.value) > 100) {
-      warning.textContent = "⚠️ 변경 비율은 100%를 초과할 수 없습니다";
+    const input = refs.paramsContainer.querySelector(`[data-param="${ratioParam.key}"]`);
+    if (input && Number(input.value) > ratioParam.max) {
+      warning.textContent = `⚠️ ${ratioParam.label}은(는) ${ratioParam.max}%를 초과할 수 없습니다`;
       warning.classList.add("is-over-limit");
       runButtons.forEach((b) => (b.disabled = true));
       return;
