@@ -21,7 +21,7 @@ body {
 }
 
 body {
-  font-family: "Trebuchet MS", "Apple SD Gothic Neo", sans-serif;
+  font-family: "Aptos", "Segoe UI Variable Text", "Pretendard Variable", "SUIT Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at 20% 8%, rgba(246, 220, 171, 0.1), transparent 18%),
@@ -100,8 +100,11 @@ body {
 
 .site-hero h1 {
   margin: 0 0 10px;
+  font-family: "Aptos", "Segoe UI Variable Display", "Pretendard Variable", "SUIT Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.04em;
   font-size: 34px;
-  line-height: 1.05;
+  line-height: 1.1;
 }
 
 .site-hero p {
@@ -194,8 +197,11 @@ body {
 .catalog-card h3,
 .catalog-card h4 {
   margin: 0;
+  font-family: "Aptos", "Segoe UI Variable Display", "Pretendard Variable", "SUIT Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
   font-size: 26px;
-  line-height: 1.15;
+  line-height: 1.18;
 }
 
 .case-board__stamp {

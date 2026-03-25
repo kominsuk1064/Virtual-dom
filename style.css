@@ -18,6 +18,8 @@
   --code: #1b1615;
   --code-line: rgba(255, 255, 255, 0.08);
   --shadow: 0 22px 60px rgba(11, 7, 6, 0.22);
+  --font-body: "Aptos", "Segoe UI Variable Text", "Pretendard Variable", "SUIT Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --font-display: "Aptos", "Segoe UI Variable Display", "Pretendard Variable", "SUIT Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
 }
 
 * {
@@ -30,7 +32,7 @@ html {
 
 body {
   margin: 0;
-  font-family: "Trebuchet MS", "Apple SD Gothic Neo", sans-serif;
+  font-family: var(--font-body);
   color: var(--text);
   background:
     radial-gradient(circle at 14% 10%, rgba(245, 224, 184, 0.08), transparent 16%),
@@ -40,7 +42,8 @@ body {
 
 button,
 textarea,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -93,7 +96,7 @@ input {
 .hero h1,
 .panel__header h2,
 .story-card h2 {
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-display);
 }
 
 .hero h1 {
@@ -259,6 +262,30 @@ input {
   color: #56352a;
 }
 
+#reset-button {
+  border-color: rgba(157, 106, 49, 0.34);
+  background: linear-gradient(135deg, rgba(157, 106, 49, 0.16), rgba(255, 248, 232, 0.96));
+  color: #70451d;
+  font-weight: 700;
+}
+
+#reset-button:hover:not(:disabled) {
+  border-color: rgba(157, 106, 49, 0.52);
+  background: linear-gradient(135deg, rgba(157, 106, 49, 0.22), rgba(255, 246, 226, 1));
+}
+
+#benchmark-button {
+  border-color: rgba(66, 95, 115, 0.36);
+  background: linear-gradient(135deg, rgba(66, 95, 115, 0.18), rgba(242, 247, 251, 0.96));
+  color: #2a5368;
+  font-weight: 700;
+}
+
+#benchmark-button:hover:not(:disabled) {
+  border-color: rgba(66, 95, 115, 0.54);
+  background: linear-gradient(135deg, rgba(66, 95, 115, 0.24), rgba(236, 244, 249, 1));
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -343,6 +370,18 @@ input {
 .chip-button--secondary {
   background: rgba(66, 95, 115, 0.1);
   color: var(--sky);
+}
+
+.toolbar__scenario-actions .chip-button[data-scenario="sync"] {
+  border-color: rgba(21, 111, 99, 0.3);
+  background: linear-gradient(135deg, rgba(21, 111, 99, 0.14), rgba(242, 251, 248, 0.96));
+  color: #17675c;
+  font-weight: 700;
+}
+
+.toolbar__scenario-actions .chip-button[data-scenario="sync"]:hover:not(:disabled) {
+  border-color: rgba(21, 111, 99, 0.46);
+  background: linear-gradient(135deg, rgba(21, 111, 99, 0.2), rgba(236, 248, 244, 1));
 }
 
 .scenario-note {
