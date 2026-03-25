@@ -10,6 +10,15 @@
 
 import { vdomToDomMapped } from "./vdom-mapped.js";
 
+/**
+ * WeakMap O(1) 패치 적용.
+ * _ref/_parentRef로 대상 DOM을 조회하여 ADD/REMOVE/REPLACE/MOVE/PROPS_UPDATE/TEXT_UPDATE를 수행한다.
+ * nodeMap 조회 실패 시 해당 패치를 건너뛴다 (graceful skip).
+ * @param {Node} rootDom - 현재 렌더링된 루트 DOM 노드
+ * @param {Array} patches - diff가 생성한 패치 배열
+ * @param {WeakMap} nodeMap - vdomNode → domNode 매핑 (vdomToDomMapped가 구축)
+ * @returns {Node} 패치 적용 후 루트 DOM (REPLACE 시 교체될 수 있음)
+ */
 export function applyPatchesMapped(rootDom, patches, nodeMap) {
   let currentRoot = rootDom;
 

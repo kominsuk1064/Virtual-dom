@@ -11,6 +11,7 @@
  * 제거 방법: 이 파일과 src/optimized/ 폴더를 삭제하면 된다.
  */
 
+/** props 객체 간 차이를 비교한다. key 속성은 비교에서 제외. */
 function diffProps(oldProps = {}, newProps = {}) {
   const setProps = {};
   const removeProps = [];
@@ -28,6 +29,7 @@ function diffProps(oldProps = {}, newProps = {}) {
   return { setProps, removeProps };
 }
 
+/** vnode에서 key를 추출한다. props.key → data-key → null 순서로 폴백. */
 function getKey(vnode) {
   return vnode?.props?.key ?? vnode?.props?.["data-key"] ?? null;
 }
@@ -67,6 +69,10 @@ function lisIndices(arr) {
   return result;
 }
 
+/**
+ * key가 있는 자식 노드끼리 매칭 후 diff.
+ * LIS 알고리즘으로 최소 MOVE 연산을 계산한다.
+ */
 function diffChildrenKeyed(oldChildren, newChildren, path, parentOldVdom) {
   const patches = [];
 
@@ -172,6 +178,7 @@ function diffChildrenKeyed(oldChildren, newChildren, path, parentOldVdom) {
 
 /* ── 인덱스 기반 폴백 (key 없을 때) ──────────────── */
 
+/** key 없는 자식 노드끼리 인덱스 순서대로 비교하는 폴백 알고리즘. */
 function diffChildrenIndexed(oldChildren, newChildren, path, parentOldVdom) {
   const patches = [];
   const sharedLen = Math.min(oldChildren.length, newChildren.length);
@@ -199,6 +206,11 @@ function diffChildrenIndexed(oldChildren, newChildren, path, parentOldVdom) {
 
 /* ── 메인 diff ────────────────────────────────────── */
 
+/**
+ * 두 VDOM 트리를 비교하여 패치 배열을 반환한다.
+ * 자식에 key가 하나라도 있으면 keyed 알고리즘, 없으면 indexed 폴백 사용.
+ * 모든 패치에 _ref(대상 old vnode) / _parentRef(부모 old vnode)를 첨부한다.
+ */
 export function diff(oldVDOM, newVDOM, path = []) {
   if (!oldVDOM && !newVDOM) return [];
 
