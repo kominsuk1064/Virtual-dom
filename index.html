@@ -245,6 +245,32 @@
         </section>
       </section>
 
+      <section class="code-edit-grid">
+        <section class="panel panel--code-editor">
+          <div class="panel__header">
+            <h2>4. index 코드로 직접 수정하기</h2>
+            <p>수사 보드에 실제로 반영되는 HTML 조각입니다. 이 코드를 직접 고치면 오른쪽 가설 보드가 바로 다시 계산됩니다.</p>
+          </div>
+
+          <label class="editor-label" for="direct-code-editor">수사 보드 루트 HTML</label>
+          <textarea
+            id="direct-code-editor"
+            class="code-editor-textarea"
+            spellcheck="false"
+            aria-describedby="direct-code-message"
+          ></textarea>
+
+          <div class="editor-meta">
+            <p id="direct-code-message" class="form-note" data-state="ok">
+              현재 수사 보드 HTML을 불러오는 중입니다.
+            </p>
+            <p class="form-hint">
+              맨 바깥 루트 태그는 1개만 남겨야 합니다. 코드를 고친 뒤에는 변화 반영을 눌러야 왼쪽 현재 보드에 적용됩니다.
+            </p>
+          </div>
+        </section>
+      </section>
+
       <!-- MOD: 기술 정보는 숨김 가능한 details로 내려서 초심자 시선을 덜 분산시킴 -->
       <section class="tech-grid">
         <details class="tech-card">
@@ -332,7 +358,7 @@
 
           <footer class="catalog-card__footer">
             <span class="sample-badge">추적 중</span>
-            <button class="sample-cta" type="button" disabled>증거 봉투 열람</button>
+            <button class="sample-cta" type="button" disabled></button>
           </footer>
         </section>
       </template>

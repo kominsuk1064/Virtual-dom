@@ -27,6 +27,8 @@ const undoButton = document.querySelector("#undo-button");
 const redoButton = document.querySelector("#redo-button");
 const resetButton = document.querySelector("#reset-button");
 const patchLog = document.querySelector("#patch-log");
+const directCodeEditor = document.querySelector("#direct-code-editor");
+const directCodeMessage = document.querySelector("#direct-code-message");
 const vdomPreview = document.querySelector("#vdom-preview");
 const validationMessage = document.querySelector("#validation-message");
 const stateIndicator = document.querySelector("#state-indicator");
@@ -77,6 +79,8 @@ const scenarioLabels = {
   replace: "보드 태그 바꾸기",
   sync: "현재 수사 보드 불러오기"
 };
+const EMPTY_CLUE_KEY = "empty-clue";
+const EMPTY_CLUE_LABEL = "아직 확보된 단서 없음";
 
 const frameReadyState = {
   actual: false,
@@ -270,6 +274,18 @@ function setValidationMessage(valid, message) {
 }
 
 /**
+ * Update the note shown below the direct HTML editor.
+ */
+function setDirectCodeMessage(valid, message) {
+  if (!directCodeMessage) {
+    return;
+  }
+
+  directCodeMessage.dataset.state = valid ? "ok" : "error";
+  directCodeMessage.textContent = message;
+}
+
+/**
  * Reflect the current state in the metric cards.
  */
 function updateStatus(statusLabel) {
@@ -459,6 +475,276 @@ function createEvidencePhoto(title, badge, theme) {
 }
 
 /**
+ * Format one DOM node into readable HTML for the direct code editor.
+ */
+function formatDomNodeAsHtml(node, depth = 0) {
+  const indent = "  ".repeat(depth);
+
+  if (node.nodeType === Node.TEXT_NODE) {
+    const text = (node.textContent ?? "").trim();
+    return text ? `${indent}${text}` : "";
+  }
+
+  if (node.nodeType !== Node.ELEMENT_NODE) {
+    return "";
+  }
+
+  const tagName = node.tagName.toLowerCase();
+  const attributes = Array.from(node.attributes)
+    .map((attribute) => ` ${attribute.name}="${attribute.value.replaceAll('"', "&quot;")}"`)
+    .join("");
+  const meaningfulChildren = Array.from(node.childNodes).filter((child) => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      return (child.textContent ?? "").trim() !== "";
+    }
+
+    return child.nodeType === Node.ELEMENT_NODE;
+  });
+
+  if (!meaningfulChildren.length) {
+    return `${indent}<${tagName}${attributes}></${tagName}>`;
+  }
+
+  const hasElementChild = meaningfulChildren.some((child) => child.nodeType === Node.ELEMENT_NODE);
+  const hasTextChild = meaningfulChildren.some((child) => child.nodeType === Node.TEXT_NODE);
+
+  if (!hasElementChild && meaningfulChildren.length === 1) {
+    return `${indent}<${tagName}${attributes}>${(meaningfulChildren[0].textContent ?? "").trim()}</${tagName}>`;
+  }
+
+  if (hasElementChild && hasTextChild) {
+    return `${indent}${node.outerHTML}`;
+  }
+
+  const childLines = meaningfulChildren
+    .map((child) => formatDomNodeAsHtml(child, depth + 1))
+    .filter(Boolean)
+    .join("\n");
+
+  return `${indent}<${tagName}${attributes}>\n${childLines}\n${indent}</${tagName}>`;
+}
+
+/**
+ * Replace generated asset URLs with readable placeholders before showing code.
+ */
+function prepareDomForCodeEditor(root) {
+  const preparedRoot = root.cloneNode(true);
+  const title = preparedRoot.querySelector("h1, h2, h3, h4")?.textContent?.trim() ?? "수사 보드";
+  const theme = preparedRoot.getAttribute("data-theme") ?? "mint";
+  const badge = preparedRoot.querySelector(".sample-badge")?.textContent?.trim() ?? "";
+
+  preparedRoot.querySelectorAll(".suspect-card[data-suspect]").forEach((card) => {
+    const slot = card.getAttribute("data-suspect") ?? "a";
+    const image = card.querySelector("img");
+    const name = card.querySelector("strong")?.textContent?.trim() ?? `용의자 ${slot.toUpperCase()}`;
+
+    if (!image) {
+      return;
+    }
+
+    const token = image.dataset.photoInput ?? "";
+
+    if (!token) {
+      image.setAttribute("src", `auto-suspect-${slot}`);
+      image.dataset.photoInput = "";
+      image.alt = `${name} 기본 수배 사진`;
+    }
+  });
+
+  const evidenceImage = preparedRoot.querySelector(".evidence-photo__image");
+
+  if (evidenceImage) {
+    evidenceImage.setAttribute("src", "auto-evidence-image");
+    evidenceImage.setAttribute("alt", `${title} 자동 생성 증거 이미지`);
+  }
+
+  const stamp = preparedRoot.querySelector(".case-board__stamp");
+  if (stamp && !stamp.textContent?.trim()) {
+    stamp.textContent = theme === "berry" ? "긴급 추적" : "증거 검토";
+  }
+
+  const evidenceCaption = preparedRoot.querySelector(".evidence-photo__caption");
+  if (evidenceCaption && !evidenceCaption.textContent?.trim()) {
+    evidenceCaption.textContent = `${badge || "추적 중"} 상태에서 먼저 확인할 증거 메모`;
+  }
+
+  return preparedRoot;
+}
+
+/**
+ * Convert a VDOM tree into editable HTML text.
+ */
+function formatVdomAsDirectCode(vdom) {
+  const root = vdomToDom(cloneVdom(vdom));
+
+  if (!root) {
+    return "";
+  }
+
+  return formatDomNodeAsHtml(prepareDomForCodeEditor(root));
+}
+
+/**
+ * Keep the direct code editor synchronized with the current candidate board.
+ */
+function syncDirectCodeEditorFromVdom(vdom, message = "현재 수사 보드 HTML을 코드 섹션에 맞춰 갱신했습니다.") {
+  if (!directCodeEditor) {
+    return;
+  }
+
+  directCodeEditor.value = formatVdomAsDirectCode(vdom);
+  setDirectCodeMessage(true, message);
+}
+
+/**
+ * Normalize HTML from the direct code editor so the board can render safely.
+ */
+function normalizeRootFromDirectCode(root) {
+  const theme = root.getAttribute("data-theme") ?? "mint";
+  const title = root.querySelector("h1, h2, h3, h4")?.textContent?.trim() ?? "수사 보드";
+  const badge = root.querySelector(".sample-badge")?.textContent?.trim() ?? "";
+
+  root.querySelectorAll(".suspect-card[data-suspect]").forEach((card) => {
+    const slot = card.getAttribute("data-suspect") ?? "a";
+    const image = card.querySelector("img");
+    const name = card.querySelector("strong")?.textContent?.trim() ?? `용의자 ${slot.toUpperCase()}`;
+
+    if (!image) {
+      return;
+    }
+
+    const source = image.getAttribute("src")?.trim() ?? "";
+
+    if (!source || source === `auto-suspect-${slot}`) {
+      image.setAttribute("src", createDefaultSuspectPhoto(name, slot, theme));
+      image.dataset.photoInput = "";
+    } else {
+      image.dataset.photoInput = source;
+    }
+
+    image.setAttribute("alt", `${name} 용의자 사진`);
+  });
+
+  const evidenceImage = root.querySelector(".evidence-photo__image");
+  if (evidenceImage) {
+    const source = evidenceImage.getAttribute("src")?.trim() ?? "";
+
+    if (!source || source === "auto-evidence-image") {
+      evidenceImage.setAttribute("src", createEvidencePhoto(title, badge, theme));
+    }
+
+    evidenceImage.setAttribute("alt", `${title} 핵심 증거 이미지`);
+  }
+
+  return root;
+}
+
+/**
+ * Validate and convert raw HTML from the direct code editor.
+ */
+function validateDirectCodeEditorValue(source) {
+  if (!source.trim()) {
+    return {
+      valid: false,
+      message: "index 코드 입력칸이 비어 있습니다. 수사 보드 루트 HTML을 1개 이상 넣어야 합니다.",
+      vdom: null
+    };
+  }
+
+  const parsedDocument = new DOMParser().parseFromString(source, "text/html");
+  const meaningfulNodes = Array.from(parsedDocument.body.childNodes).filter(isMeaningfulTopLevelNode);
+
+  if (meaningfulNodes.length !== 1 || meaningfulNodes[0].nodeType !== Node.ELEMENT_NODE) {
+    return {
+      valid: false,
+      message: "index 코드 섹션에는 맨 바깥 루트 태그를 1개만 남겨야 합니다.",
+      vdom: null
+    };
+  }
+
+  const normalizedRoot = normalizeRootFromDirectCode(meaningfulNodes[0]);
+  const nextVdom = domToVdom(normalizedRoot);
+
+  if (!nextVdom) {
+    return {
+      valid: false,
+      message: "index 코드에서 가설 보드를 읽어오지 못했습니다.",
+      vdom: null
+    };
+  }
+
+  return {
+    valid: true,
+    message: "index 코드 기준으로 가설 보드를 다시 계산했습니다.",
+    vdom: nextVdom
+  };
+}
+
+/**
+ * Apply a validated draft VDOM to the preview workflow no matter which editor produced it.
+ */
+function applyDraftValidation(validation, reason, source = "form") {
+  currentValidation = validation;
+  clearHighlightsInFrame("actual");
+
+  if (validation.valid) {
+    pendingPatches = diff(currentVDOM, validation.vdom);
+
+    renderSnapshotInFrame("preview", validation.vdom, pendingPatches);
+    renderVdomPreview(validation.vdom, `[미리보기] ${reason}`);
+    setValidationMessage(true, validation.message);
+
+    if (source === "form") {
+      syncDirectCodeEditorFromVdom(validation.vdom, "구조화 입력 기준으로 index 코드 섹션을 다시 맞췄습니다.");
+    } else {
+      setDirectCodeMessage(true, validation.message);
+    }
+
+    if (pendingPatches.length > 0) {
+      renderChangeSummary("pending", {
+        patches: pendingPatches,
+        validation,
+        nextVdom: validation.vdom,
+        oldVDOM: currentVDOM
+      });
+      renderPatchLog("미리보기 준비 완료", pendingPatches, [
+        `[미리보기] ${reason}`,
+        "[안내] 아직 현재 수사 보드에는 반영되지 않았습니다."
+      ]);
+      updateStatus("비교 완료");
+    } else {
+      renderChangeSummary("synced", {
+        validation,
+        nextVdom: validation.vdom
+      });
+      renderPatchLog("변화 없음", [], [
+        `[미리보기] ${reason}`,
+        "[안내] 현재 수사 보드와 가설 보드가 동일합니다."
+      ]);
+      updateStatus("변경 없음");
+    }
+  } else {
+    pendingPatches = [];
+    renderPreviewPlaceholder(validation.message);
+    renderVdomPreview(currentVDOM, `[검증] ${validation.message}`);
+    setValidationMessage(false, validation.message);
+
+    if (source === "code") {
+      setDirectCodeMessage(false, validation.message);
+    } else {
+      setDirectCodeMessage(false, "구조화 입력이 아직 완전하지 않아 마지막 정상 index HTML을 유지하고 있습니다.");
+    }
+
+    renderChangeSummary("invalid", { validation });
+    renderPatchLog("미리보기 중단", [], [`[이유] ${validation.message}`]);
+    updateStatus("입력 오류");
+  }
+
+  updateButtonState();
+  return validation;
+}
+
+/**
  * Push a VDOM snapshot back into the structured editor fields.
  */
 function syncEditorFieldsFromVdom(vdom) {
@@ -472,7 +758,7 @@ function syncEditorFieldsFromVdom(vdom) {
   descriptionField.value = root.querySelector(".catalog-card__body")?.textContent?.trim() ?? "";
   itemsField.value = Array.from(root.querySelectorAll("ul li, ol li"))
     .map((item) => item.textContent?.trim() ?? "")
-    .filter(Boolean)
+    .filter((value) => Boolean(value) && value !== EMPTY_CLUE_LABEL)
     .join("\n");
   rootTagField.value = root.tagName.toLowerCase();
   themeField.value = root.getAttribute("data-theme") ?? "mint";
@@ -537,6 +823,7 @@ function buildVdomFromEditor(values) {
       item.textContent = itemText;
       list.appendChild(item);
     });
+    ensureClueListHasVisibleState(list);
   }
 
   const badge = root.querySelector(".sample-badge");
@@ -597,14 +884,6 @@ function validateEditorValues(values) {
     return {
       valid: false,
       message: "수사 메모를 입력해야 가설 보드를 만들 수 있습니다.",
-      vdom: null
-    };
-  }
-
-  if (!values.items.length) {
-    return {
-      valid: false,
-      message: "단서 카드는 한 줄 이상 입력해야 합니다.",
       vdom: null
     };
   }
@@ -851,11 +1130,13 @@ function renderChangeSummary(mode, options = {}) {
 }
 
 /**
- * Build a detached DOM root from the current actual-state VDOM.
+ * Build a detached DOM root from the latest candidate board when possible.
  */
-function buildEditableRootFromCurrentState() {
-  if (currentVDOM) {
-    return vdomToDom(cloneVdom(currentVDOM));
+function buildEditableRootFromScenarioBase() {
+  const baseVdom = currentValidation.valid && currentValidation.vdom ? currentValidation.vdom : currentVDOM;
+
+  if (baseVdom) {
+    return vdomToDom(cloneVdom(baseVdom));
   }
 
   return initialCardTemplate?.content?.firstElementChild?.cloneNode(true) ?? null;
@@ -864,7 +1145,7 @@ function buildEditableRootFromCurrentState() {
 /**
  * Return the next scenario item that is not already present.
  */
-function getNextSampleItem(existingKeys) {
+function getNextSampleItem(existingLabels) {
   const candidates = [
     { key: "glove", label: "찢어진 장갑 발견" },
     { key: "ticket", label: "찢긴 입장권 확보" },
@@ -872,31 +1153,55 @@ function getNextSampleItem(existingKeys) {
     { key: "note", label: "익명 쪽지 도착" }
   ];
 
-  return candidates.find((item) => !existingKeys.has(item.key)) ?? {
-    key: `sample-${existingKeys.size + 1}`,
-    label: `새 단서 메모 ${existingKeys.size + 1}개`
+  return candidates.find((item) => !existingLabels.has(item.label)) ?? {
+    key: `sample-${existingLabels.size + 1}`,
+    label: `새 단서 메모 ${existingLabels.size + 1}개`
   };
+}
+
+/**
+ * Keep one visible empty-state clue card when no real clues remain.
+ */
+function ensureClueListHasVisibleState(list) {
+  if (!list) {
+    return;
+  }
+
+  const realItems = Array.from(list.children).filter((item) => item.getAttribute("data-item") !== EMPTY_CLUE_KEY);
+
+  if (realItems.length > 0) {
+    list.querySelector(`[data-item='${EMPTY_CLUE_KEY}']`)?.remove();
+    return;
+  }
+
+  if (!list.querySelector(`[data-item='${EMPTY_CLUE_KEY}']`)) {
+    const placeholder = document.createElement("li");
+    placeholder.setAttribute("data-item", EMPTY_CLUE_KEY);
+    placeholder.setAttribute("data-empty-state", "true");
+    placeholder.textContent = EMPTY_CLUE_LABEL;
+    list.appendChild(placeholder);
+  }
 }
 
 /**
  * Build a presenter-friendly draft VDOM from the current actual DOM.
  */
 function buildScenarioDraft(kind) {
-  const cleanActualRoot = buildEditableRootFromCurrentState();
+  const candidateRoot = buildEditableRootFromScenarioBase();
 
   if (kind === "sync") {
     return {
       vdom: cloneVdom(currentVDOM),
-      message: "현재 수사 보드를 그대로 편집기에 불러왔습니다."
+      message: "현재 수사 보드를 다시 기준점으로 불러왔습니다. 누적된 가설 변경은 초기화됩니다."
     };
   }
 
-  const root = cleanActualRoot;
+  const root = candidateRoot;
 
   if (!root) {
     return {
       vdom: null,
-      message: "현재 수사 보드를 찾지 못했습니다."
+      message: "가설 보드 기준점을 찾지 못했습니다."
     };
   }
 
@@ -912,7 +1217,7 @@ function buildScenarioDraft(kind) {
 
     return {
       vdom: domToVdom(root),
-      message: "사건명만 바뀐 가설 보드를 만들었습니다."
+      message: "현재 가설 보드에 사건명 변경을 추가했습니다."
     };
   }
 
@@ -928,7 +1233,7 @@ function buildScenarioDraft(kind) {
 
     return {
       vdom: domToVdom(root),
-      message: "긴급도와 보드 상태만 바뀐 가설 보드를 만들었습니다."
+      message: "현재 가설 보드에 긴급도 변경을 추가했습니다."
     };
   }
 
@@ -936,8 +1241,13 @@ function buildScenarioDraft(kind) {
     const list = root.querySelector("ul, ol");
 
     if (list) {
-      const existingKeys = new Set(Array.from(list.children).map((item) => item.getAttribute("data-item")));
-      const nextItem = getNextSampleItem(existingKeys);
+      list.querySelector(`[data-item='${EMPTY_CLUE_KEY}']`)?.remove();
+      const existingLabels = new Set(
+        Array.from(list.children)
+          .map((item) => item.textContent?.trim() ?? "")
+          .filter(Boolean)
+      );
+      const nextItem = getNextSampleItem(existingLabels);
       const newItem = document.createElement("li");
 
       newItem.setAttribute("data-item", nextItem.key);
@@ -947,23 +1257,24 @@ function buildScenarioDraft(kind) {
 
     return {
       vdom: domToVdom(root),
-      message: "단서 카드가 1개 추가된 가설 보드를 만들었습니다."
+      message: "현재 가설 보드에 단서 카드 1개를 더했습니다."
     };
   }
 
   if (kind === "remove") {
     const removableItem = root.querySelector("ul li:last-child, ol li:last-child");
-    const removableFallback = root.querySelector(".catalog-card__footer") ?? root.lastElementChild;
 
-    if (removableItem) {
+    if (removableItem && removableItem.getAttribute("data-item") !== EMPTY_CLUE_KEY) {
       removableItem.remove();
-    } else if (removableFallback && removableFallback !== root.querySelector(".catalog-card__header")) {
-      removableFallback.remove();
     }
+
+    ensureClueListHasVisibleState(root.querySelector("ul, ol"));
 
     return {
       vdom: domToVdom(root),
-      message: "단서 카드 또는 마지막 블록이 하나 줄어든 가설 보드를 만들었습니다."
+      message: removableItem && removableItem.getAttribute("data-item") !== EMPTY_CLUE_KEY
+        ? "현재 가설 보드에서 단서 카드 1개를 줄였습니다."
+        : "단서가 모두 비어 있어 빈 단서 메모 상태로 유지했습니다."
     };
   }
 
@@ -978,7 +1289,7 @@ function buildScenarioDraft(kind) {
 
   return {
     vdom: domToVdom(replacement),
-    message: `보드 태그를 <${replacementTag}>로 바꾼 가설 보드를 만들었습니다.`
+    message: `현재 가설 보드에 보드 태그 변경(<${replacementTag}>)을 추가했습니다.`
   };
 }
 
@@ -994,7 +1305,7 @@ function applyScenario(kind) {
   }
 
   syncEditorFieldsFromVdom(draft.vdom);
-  const validation = refreshPreviewFromEditor(`${scenarioLabels[kind]} 시나리오를 적용했습니다.`);
+  const validation = refreshPreviewFromEditor(`${scenarioLabels[kind]} 시나리오를 현재 가설 보드에 누적 적용했습니다.`);
   updateStatus(validation.valid ? "시나리오 초안 준비" : "입력 오류");
 }
 
@@ -1004,51 +1315,20 @@ function applyScenario(kind) {
 function refreshPreviewFromEditor(reason = "입력 기록 기준으로 가설 보드를 다시 계산했습니다.") {
   refreshPhotoControls();
   const validation = validateEditorValues(getEditorValues());
-  currentValidation = validation;
-  clearHighlightsInFrame("actual");
+  return applyDraftValidation(validation, reason, "form");
+}
+
+/**
+ * Rebuild the candidate VDOM from direct HTML code.
+ */
+function refreshPreviewFromDirectCode(reason = "index 코드 기준으로 가설 보드를 다시 계산했습니다.") {
+  const validation = validateDirectCodeEditorValue(directCodeEditor?.value ?? "");
 
   if (validation.valid) {
-    pendingPatches = diff(currentVDOM, validation.vdom);
-
-    renderSnapshotInFrame("preview", validation.vdom, pendingPatches);
-    renderVdomPreview(validation.vdom, `[미리보기] ${reason}`);
-    setValidationMessage(true, validation.message);
-
-    if (pendingPatches.length > 0) {
-      renderChangeSummary("pending", {
-        patches: pendingPatches,
-        validation,
-        nextVdom: validation.vdom,
-        oldVDOM: currentVDOM
-      });
-      renderPatchLog("미리보기 준비 완료", pendingPatches, [
-        `[미리보기] ${reason}`,
-        "[안내] 아직 현재 수사 보드에는 반영되지 않았습니다."
-      ]);
-      updateStatus("비교 완료");
-    } else {
-      renderChangeSummary("synced", {
-        validation,
-        nextVdom: validation.vdom
-      });
-      renderPatchLog("변화 없음", [], [
-        `[미리보기] ${reason}`,
-        "[안내] 현재 수사 보드와 가설 보드가 동일합니다."
-      ]);
-      updateStatus("변경 없음");
-    }
-  } else {
-    pendingPatches = [];
-    renderPreviewPlaceholder(validation.message);
-    renderVdomPreview(currentVDOM, `[검증] ${validation.message}`);
-    setValidationMessage(false, validation.message);
-    renderChangeSummary("invalid", { validation });
-    renderPatchLog("미리보기 중단", [], [`[이유] ${validation.message}`]);
-    updateStatus("입력 오류");
+    syncEditorFieldsFromVdom(validation.vdom);
   }
 
-  updateButtonState();
-  return validation;
+  return applyDraftValidation(validation, reason, "code");
 }
 
 /**
@@ -1061,6 +1341,7 @@ function syncBothAreasFromVdom(vdom) {
   renderSnapshotInFrame("preview", snapshot);
   syncEditorFieldsFromVdom(snapshot);
   refreshPhotoControls();
+  syncDirectCodeEditorFromVdom(snapshot, "현재 이력 상태 기준으로 index 코드 섹션을 다시 맞췄습니다.");
 
   currentValidation = {
     valid: true,
@@ -1268,6 +1549,10 @@ async function bootstrap() {
     field.addEventListener("change", () => {
       refreshPreviewFromEditor("선택 항목 변경으로 가설 보드를 다시 계산했습니다.");
     });
+  });
+
+  directCodeEditor?.addEventListener("input", () => {
+    refreshPreviewFromDirectCode("index 코드 수정으로 가설 보드를 다시 계산했습니다.");
   });
 
   Object.entries(suspectPhotoControls).forEach(([slot, control]) => {

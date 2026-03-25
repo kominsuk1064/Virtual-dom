@@ -21,7 +21,7 @@ body {
 }
 
 body {
-  font-family: "Aptos", "Segoe UI Variable Text", "Pretendard Variable", "SUIT Variable", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  font-family: "Bahnschrift", "Malgun Gothic", "Segoe UI", sans-serif;
   color: var(--text);
   background:
     radial-gradient(circle at 20% 8%, rgba(246, 220, 171, 0.1), transparent 18%),
@@ -63,15 +63,17 @@ body {
 .site-brand__dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 2px;
   background: var(--accent);
   box-shadow: 0 0 0 6px rgba(21, 111, 99, 0.08);
+  transform: rotate(45deg);
 }
 
 .site-nav a {
   color: #d7c3b1;
   text-decoration: none;
   font-size: 13px;
+  letter-spacing: 0.04em;
 }
 
 .site-main {
@@ -84,7 +86,7 @@ body {
 .site-content {
   padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 12px;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -104,7 +106,8 @@ body {
   font-weight: 700;
   letter-spacing: -0.04em;
   font-size: 34px;
-  line-height: 1.1;
+  line-height: 1.05;
+  font-family: "Cambria", "Times New Roman", "Batang", serif;
 }
 
 .site-hero p {
@@ -121,7 +124,7 @@ body {
   display: grid;
   place-items: center;
   min-height: 320px;
-  border-radius: 22px;
+  border-radius: 8px;
   border: 1px dashed rgba(96, 64, 44, 0.2);
   background: linear-gradient(180deg, rgba(96, 64, 44, 0.04), rgba(96, 64, 44, 0.01));
   text-align: center;
@@ -142,7 +145,7 @@ body {
 .catalog-card {
   position: relative;
   border: 1px solid rgba(95, 66, 45, 0.18);
-  border-radius: 24px;
+  border-radius: 10px;
   background:
     linear-gradient(180deg, rgba(131, 86, 53, 0.92) 0%, rgba(111, 73, 45, 0.96) 100%);
   padding: 22px;
@@ -178,7 +181,7 @@ body {
   gap: 12px;
   margin-bottom: 14px;
   padding: 16px 18px 14px;
-  border-radius: 18px;
+  border-radius: 8px;
   background: linear-gradient(180deg, #fbf3df 0%, #f3e4c4 100%);
   box-shadow: 0 8px 18px rgba(46, 27, 18, 0.08);
 }
@@ -201,22 +204,26 @@ body {
   font-weight: 700;
   letter-spacing: -0.03em;
   font-size: 26px;
-  line-height: 1.18;
+  line-height: 1.15;
+  font-family: "Cambria", "Times New Roman", "Batang", serif;
 }
 
 .case-board__stamp {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 12px;
-  border: 2px solid rgba(122, 36, 25, 0.2);
-  border-radius: 999px;
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 2px solid rgba(122, 36, 25, 0.28);
+  border-radius: 4px;
+  background: rgba(255, 248, 235, 0.54);
   color: #7a2419;
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  transform: rotate(-8deg);
+  box-shadow: 2px 2px 0 rgba(80, 48, 32, 0.16);
+  transform: rotate(-6deg);
 }
 
 .case-board__suspects {
@@ -241,7 +248,7 @@ body {
 .suspect-card {
   position: relative;
   padding: 18px 16px 16px;
-  border-radius: 18px;
+  border-radius: 8px;
   background: linear-gradient(180deg, #fff7ea 0%, #f2dec0 100%);
   box-shadow: 0 10px 18px rgba(46, 27, 18, 0.12);
 }
@@ -263,7 +270,7 @@ body {
 
 .suspect-card__photo {
   margin-bottom: 12px;
-  border-radius: 16px;
+  border-radius: 6px;
   overflow: hidden;
   background: rgba(92, 63, 45, 0.1);
 }
@@ -290,7 +297,7 @@ body {
 .catalog-card__body {
   margin: 0 0 16px;
   padding: 16px 18px;
-  border-radius: 18px;
+  border-radius: 6px;
   background: linear-gradient(180deg, #fff8eb 0%, #f8ead1 100%);
   color: #3a2d25;
   line-height: 1.7;
@@ -306,7 +313,7 @@ body {
 .evidence-photo {
   position: relative;
   padding: 14px 14px 16px;
-  border-radius: 18px;
+  border-radius: 8px;
   background: linear-gradient(180deg, #fff8ed 0%, #f1ddbc 100%);
   box-shadow: 0 10px 18px rgba(46, 27, 18, 0.12);
 }
@@ -325,7 +332,7 @@ body {
 .evidence-photo__image {
   display: block;
   width: 100%;
-  border-radius: 14px;
+  border-radius: 6px;
   margin-bottom: 12px;
   object-fit: cover;
 }
@@ -391,7 +398,7 @@ body {
   position: relative;
   min-height: 96px;
   padding: 18px 16px 16px;
-  border-radius: 14px;
+  border-radius: 6px;
   background: linear-gradient(180deg, #fff6b8 0%, #f6df74 100%);
   color: #33291f;
   box-shadow: 0 10px 16px rgba(39, 24, 16, 0.14);
@@ -426,7 +433,8 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
-  border-radius: 999px;
+  border: 1px solid rgba(96, 64, 44, 0.14);
+  border-radius: 4px;
   background: rgba(255, 248, 235, 0.72);
   color: #5e473b;
   font-size: 13px;
@@ -442,7 +450,7 @@ body {
 
 .catalog-card__footer {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   gap: 12px;
   margin-top: 18px;
@@ -452,19 +460,26 @@ body {
   display: inline-flex;
   align-items: center;
   padding: 8px 12px;
-  border-radius: 999px;
+  border: 2px solid rgba(122, 36, 25, 0.16);
+  border-radius: 4px;
   background: rgba(122, 36, 25, 0.12);
   color: #7a2419;
   font-size: 13px;
   font-weight: 700;
+  letter-spacing: 0.06em;
 }
 
 .sample-cta {
-  border: 1px solid rgba(96, 64, 44, 0.22);
-  border-radius: 999px;
-  background: #fff7ea;
+  border: 2px solid rgba(96, 64, 44, 0.26);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #fff9ee 0%, #ecdcbf 100%);
   padding: 10px 14px;
   color: #52352a;
+  box-shadow: 3px 3px 0 rgba(80, 48, 32, 0.14);
+}
+
+.sample-cta:empty {
+  display: none;
 }
 
 [data-change-kind] {
