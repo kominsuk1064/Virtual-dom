@@ -87,6 +87,58 @@ const scenarioLabels = {
   replace: "보드 태그 바꾸기",
   sync: "현재 수사 보드 불러오기"
 };
+const CASE_FILE_VARIANTS = {
+  laundry: {
+    title: "정글 세탁물 도난 사건",
+    stamp: "세탁실 탐문",
+    badge: "동선 추적",
+    description:
+      "정글 테마 셀프세탁소 건조기 3번이 오후 8시 42분에 멈춘 뒤, 초록 세탁망 한 묶음이 사라졌습니다.",
+    suspects: [
+      {
+        slot: "a",
+        name: "윤서진",
+        note: "형광 정글무늬 수건을 마지막으로 들고 나감"
+      },
+      {
+        slot: "b",
+        name: "마준호",
+        note: "젖은 세탁 바구니와 동일 상표 집게 소지"
+      }
+    ],
+    items: [
+      { key: "mesh", label: "초록 세탁망 찢김 발견" },
+      { key: "softener", label: "바나나 향 섬유유연제 냄새" },
+      { key: "dryer", label: "건조기 3번 정지 기록" }
+    ],
+    timeline: ["20:31 세탁 완료 알림", "20:42 건조기 3번 정지", "20:47 세탁물 도난 신고"]
+  },
+  parcel: {
+    title: "정글 택배물품 분실 사건",
+    stamp: "물류함 탐문",
+    badge: "분실 조사",
+    description:
+      "정글 물류 보관함 7번이 오후 7시 18분 이후 비어 있었고, 덩굴 로고가 붙은 택배 상자 한 개가 분실됐습니다.",
+    suspects: [
+      {
+        slot: "a",
+        name: "윤서진",
+        note: "초록 포장 끈이 묶인 운반 카트를 마지막으로 밀고 감"
+      },
+      {
+        slot: "b",
+        name: "마준호",
+        note: "찢어진 송장 스티커와 동일 필체 메모 소지"
+      }
+    ],
+    items: [
+      { key: "invoice", label: "훼손된 송장 스티커 확보" },
+      { key: "locker", label: "보관함 7번 개방 흔적" },
+      { key: "rope", label: "초록 포장 끈 회수" }
+    ],
+    timeline: ["19:06 입고 스캔 완료", "19:18 보관함 마지막 개방", "19:23 분실 접수"]
+  }
+};
 const EMPTY_CLUE_KEY = "empty-clue";
 const EMPTY_CLUE_LABEL = "아직 확보된 단서 없음";
 const EDITOR_CHAR_LIMITS = {
@@ -1019,7 +1071,7 @@ function syncEditorFieldsFromVdom(vdom) {
  * Build a normalized VDOM tree from the structured editor form.
  */
 function buildVdomFromEditor(values) {
-  const baseRoot = initialCardTemplate?.content?.firstElementChild?.cloneNode(true);
+  const baseRoot = buildEditableRootFromScenarioBase();
 
   if (!baseRoot) {
     return null;
@@ -1390,16 +1442,96 @@ function buildEditableRootFromScenarioBase() {
  */
 function getNextSampleItem(existingLabels) {
   const candidates = [
-    { key: "glove", label: "찢어진 장갑 발견" },
-    { key: "ticket", label: "찢긴 입장권 확보" },
-    { key: "mirror", label: "깨진 거울 파편 수거" },
-    { key: "note", label: "익명 쪽지 도착" }
+    { key: "tag", label: "젖은 세탁 태그 확보" },
+    { key: "invoice-note", label: "젖은 송장 봉투 발견" },
+    { key: "rope-loop", label: "덩굴 무늬 포장 끈 수거" },
+    { key: "locker-note", label: "보관함 비밀번호 메모 확보" }
   ];
 
   return candidates.find((item) => !existingLabels.has(item.label)) ?? {
     key: `sample-${existingLabels.size + 1}`,
     label: `새 단서 메모 ${existingLabels.size + 1}개`
   };
+}
+
+/**
+ * Apply one canned mock case to the detached board root.
+ */
+function applyCaseVariantToRoot(root, caseVariant) {
+  if (!root || !caseVariant) {
+    return;
+  }
+
+  const theme = root.getAttribute("data-theme") ?? "mint";
+  const heading = root.querySelector("h1, h2, h3, h4");
+  const stamp = root.querySelector(".case-board__stamp");
+  const body = root.querySelector(".catalog-card__body");
+  const badge = root.querySelector(".sample-badge");
+  const list = root.querySelector("ul, ol");
+  const timeline = root.querySelector(".case-board__timeline");
+
+  if (heading) {
+    heading.textContent = caseVariant.title;
+  }
+
+  if (stamp) {
+    stamp.textContent = caseVariant.stamp;
+  }
+
+  if (body) {
+    body.textContent = caseVariant.description;
+  }
+
+  if (badge) {
+    badge.textContent = caseVariant.badge;
+  }
+
+  caseVariant.suspects.forEach((suspect, index) => {
+    const suspectNode = root.querySelector(`.suspect-card[data-suspect='${suspect.slot}']`);
+    const suspectName = suspectNode?.querySelector("strong");
+    const suspectNote = suspectNode?.querySelector("p");
+    const suspectImage = suspectNode?.querySelector("img");
+    const currentToken = suspectImage?.dataset.photoInput ?? "";
+
+    if (suspectName) {
+      suspectName.textContent = suspect.name;
+    }
+
+    if (suspectNote) {
+      suspectNote.textContent = suspect.note;
+    }
+
+    if (suspectImage) {
+      suspectImage.src = resolvePhotoSource(currentToken, suspect.name, suspect.slot, theme);
+      suspectImage.alt = `${suspect.name} 용의자 사진`;
+    }
+
+    suspectNode?.classList.toggle("suspect-card--primary", index === 0);
+  });
+
+  if (list) {
+    list.replaceChildren();
+
+    caseVariant.items.forEach((item) => {
+      const itemNode = document.createElement("li");
+      itemNode.setAttribute("data-item", item.key);
+      itemNode.textContent = item.label;
+      list.appendChild(itemNode);
+    });
+
+    ensureClueListHasVisibleState(list);
+  }
+
+  if (timeline) {
+    timeline.replaceChildren();
+
+    caseVariant.timeline.forEach((entry) => {
+      const chip = document.createElement("div");
+      chip.className = "timeline-chip";
+      chip.textContent = entry;
+      timeline.appendChild(chip);
+    });
+  }
 }
 
 /**
@@ -1450,17 +1582,16 @@ function buildScenarioDraft(kind) {
 
   if (kind === "text") {
     const heading = root.querySelector("h1, h2, h3, h4");
+    const nextVariant =
+      heading?.textContent?.trim() === CASE_FILE_VARIANTS.laundry.title
+        ? CASE_FILE_VARIANTS.parcel
+        : CASE_FILE_VARIANTS.laundry;
 
-    if (heading) {
-      heading.textContent =
-        heading.textContent === "붉은 열쇠 실종 사건"
-          ? "푸른 회중시계 도난 사건"
-          : "붉은 열쇠 실종 사건";
-    }
+    applyCaseVariantToRoot(root, nextVariant);
 
     return {
       vdom: domToVdom(root),
-      message: "현재 가설 보드에 사건명 변경을 추가했습니다."
+      message: `현재 가설 보드에 ${nextVariant.title} 사건 세트를 적용했습니다.`
     };
   }
 
@@ -1548,7 +1679,15 @@ function applyScenario(kind) {
   }
 
   syncEditorFieldsFromVdom(draft.vdom);
-  const validation = refreshPreviewFromEditor(`${scenarioLabels[kind]} 시나리오를 현재 가설 보드에 누적 적용했습니다.`);
+  const validation = applyDraftValidation(
+    {
+      valid: true,
+      message: draft.message,
+      vdom: draft.vdom
+    },
+    `${scenarioLabels[kind]} 시나리오를 현재 가설 보드에 누적 적용했습니다.`,
+    "form"
+  );
   updateStatus(validation.valid ? "시나리오 초안 준비" : "입력 오류");
 }
 
